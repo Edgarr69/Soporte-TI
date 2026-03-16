@@ -1,0 +1,44 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { AppSidebar } from '@/components/shared/app-sidebar'
+import { TopBar } from '@/components/shared/top-bar'
+import type { Role, Profile } from '@/lib/types'
+
+export default async function MisTicketsLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, role, first_login_completed')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile) redirect('/login')
+
+  const { count: unreadCount } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('is_read', false)
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100/80 dark:from-zinc-950 dark:to-zinc-900/80">
+      <AppSidebar
+        profile={profile as unknown as Profile}
+        role={profile.role as Role}
+      />
+      <div className="ml-[4.5rem] flex flex-col min-h-screen">
+        <TopBar
+          unreadCount={unreadCount ?? 0}
+          userId={user.id}
+          role={profile.role as Role}
+        />
+        <main className="flex-1">
+          {children}
+        </main>
+      </div>
+    </div>
+  )
+}

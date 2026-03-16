@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude
+CLAUDE.md
+
+# Scripts de administración local (contienen credenciales)
+scripts/
+
+# Imágenes locales del servidor (usadas en PDF, no necesarias en repo)
+fotos/
