@@ -101,7 +101,7 @@ export function LoginModal({ isOpen, onClose }: Props) {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="Ingresa tu correo"
-                  className={`flex-1 bg-transparent text-sm outline-none ${dark ? 'text-white placeholder:text-zinc-500' : 'text-zinc-900 placeholder:text-zinc-400'}`}
+                  className={`flex-1 bg-transparent text-base outline-none ${dark ? 'text-white placeholder:text-zinc-500' : 'text-zinc-900 placeholder:text-zinc-400'}`}
                 />
                 <Mail className={`h-5 w-5 flex-shrink-0 ${dark ? 'text-zinc-400' : 'text-zinc-400'}`} />
               </div>
@@ -125,7 +125,7 @@ export function LoginModal({ isOpen, onClose }: Props) {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Ingresa tu contraseña"
-                  className={`flex-1 bg-transparent text-sm outline-none ${dark ? 'text-white placeholder:text-zinc-500' : 'text-zinc-900 placeholder:text-zinc-400'}`}
+                  className={`flex-1 bg-transparent text-base outline-none ${dark ? 'text-white placeholder:text-zinc-500' : 'text-zinc-900 placeholder:text-zinc-400'}`}
                 />
                 <Lock className={`h-5 w-5 flex-shrink-0 ${dark ? 'text-zinc-400' : 'text-zinc-400'}`} />
               </div>
