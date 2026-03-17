@@ -274,6 +274,10 @@ export function AdminMaintenanceDetail({
               <Button
                 size="sm"
                 onClick={() => {
+                  if (fechaTermino && fechaTermino < ticket.fecha_solicitud) {
+                    toast.error('La fecha de término no puede ser anterior a la fecha de solicitud.')
+                    return
+                  }
                   const tech = technicians.find((t) => t.id === tecnicoId)
                   transition('asignado', {
                     tecnico_id:              tecnicoId || undefined,

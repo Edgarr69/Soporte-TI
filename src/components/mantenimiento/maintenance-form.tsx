@@ -53,6 +53,16 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
       return
     }
 
+    const today = new Date().toISOString().split('T')[0]
+    if (fechaSolicitud < today) {
+      toast.error('La fecha de solicitud no puede ser anterior a hoy.')
+      return
+    }
+    if (fechaTermino && fechaTermino < fechaSolicitud) {
+      toast.error('La fecha de término no puede ser anterior a la fecha de solicitud.')
+      return
+    }
+
     setLoading(true)
     const result = await createMaintenanceTicket({
       type:                     tipo,

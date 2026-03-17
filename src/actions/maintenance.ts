@@ -37,6 +37,13 @@ export async function createMaintenanceTicket(data: NewMaintenanceTicketFormData
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
+  // Validar fechas
+  const today = new Date().toISOString().split('T')[0]
+  if (data.fecha_solicitud < today)
+    return { error: 'La fecha de solicitud no puede ser anterior a hoy.' }
+  if (data.fecha_termino_estimada && data.fecha_termino_estimada < data.fecha_solicitud)
+    return { error: 'La fecha de término no puede ser anterior a la fecha de solicitud.' }
+
   // Generar folio atómico
   const module = data.type === 'general' ? 'general' : 'maquinaria'
   const { data: folioData, error: folioErr } = await supabase
@@ -194,6 +201,12 @@ export async function changeMaintenanceStatus(
     .eq('id', ticketId)
     .single()
   if (!ticket) return { error: 'Solicitud no encontrada' }
+
+  // Validar fecha de término si se proporciona
+  if (options?.fecha_termino_estimada && ticket.fecha_solicitud) {
+    if (options.fecha_termino_estimada < ticket.fecha_solicitud)
+      return { error: 'La fecha de término no puede ser anterior a la fecha de solicitud.' }
+  }
 
   const now = new Date().toISOString()
   const updates: Record<string, unknown> = { status: newStatus }

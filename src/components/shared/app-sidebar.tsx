@@ -52,7 +52,6 @@ const MANTENIMIENTO_ITEMS: NavItem[] = [
   { href: '/admin/mantenimiento',            icon: LayoutDashboard, label: 'Dashboard'   },
   { href: '/admin/mantenimiento/tickets',    icon: Wrench,          label: 'Solicitudes' },
   { href: '/admin/mantenimiento/tecnicos',   icon: HardHat,         label: 'Técnicos'    },
-  { href: '/admin/mantenimiento/reportes',   icon: BarChart3,       label: 'Reportes'    },
   { href: '/admin/mantenimiento/catalogos',  icon: Settings,        label: 'Catálogos'   },
   { href: '/admin/historial',                icon: History,         label: 'Historial', badge: true },
 ]
