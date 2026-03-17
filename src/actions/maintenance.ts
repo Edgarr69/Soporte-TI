@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
-import type { MaintenanceStatus, NewMaintenanceTicketFormData } from '@/lib/types'
+import type { MaintenanceStatus, MaintenanceType } from '@/lib/types'
 import { createAdminNotification } from '@/actions/admin-notifications'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { MaintenancePdfDocument } from '@/components/mantenimiento/maintenance-pdf-template'
@@ -32,20 +32,34 @@ function getServiceClient() {
 
 // ─── Crear solicitud de mantenimiento ────────────────────
 
-export async function createMaintenanceTicket(data: NewMaintenanceTicketFormData) {
+export async function createMaintenanceTicket(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
+  // Parsear campos del formulario
+  const type                    = formData.get('type') as MaintenanceType
+  const department_id           = formData.get('department_id') as string
+  const department_name_snapshot = formData.get('department_name_snapshot') as string
+  const area_id                 = formData.get('area_id') as string
+  const area_name_snapshot      = formData.get('area_name_snapshot') as string
+  const encargado_nombre        = formData.get('encargado_nombre') as string
+  const category_id             = (formData.get('category_id') as string) || null
+  const servicio                = formData.get('servicio') as string
+  const descripcion             = formData.get('descripcion') as string
+  const fecha_solicitud         = formData.get('fecha_solicitud') as string
+  const fecha_termino_estimada  = (formData.get('fecha_termino_estimada') as string) || null
+  const photoFile               = formData.get('photo') as File | null
+
   // Validar fechas
   const today = new Date().toISOString().split('T')[0]
-  if (data.fecha_solicitud < today)
+  if (fecha_solicitud < today)
     return { error: 'La fecha de solicitud no puede ser anterior a hoy.' }
-  if (data.fecha_termino_estimada && data.fecha_termino_estimada < data.fecha_solicitud)
+  if (fecha_termino_estimada && fecha_termino_estimada < fecha_solicitud)
     return { error: 'La fecha de término no puede ser anterior a la fecha de solicitud.' }
 
   // Generar folio atómico
-  const module = data.type === 'general' ? 'general' : 'maquinaria'
+  const module = type === 'general' ? 'general' : 'maquinaria'
   const { data: folioData, error: folioErr } = await supabase
     .rpc('generate_folio', { p_module: module })
   if (folioErr || !folioData) {
@@ -62,18 +76,18 @@ export async function createMaintenanceTicket(data: NewMaintenanceTicketFormData
     .from('maintenance_tickets')
     .insert({
       folio,
-      type:                     data.type,
+      type,
       user_id:                  user.id,
-      department_id:            data.department_id,
-      department_name_snapshot: data.department_name_snapshot,
-      area_id:                  data.area_id,
-      area_name_snapshot:       data.area_name_snapshot,
-      encargado_nombre:         data.encargado_nombre,
-      category_id:              data.category_id || null,
-      servicio:                 data.servicio,
-      descripcion:              data.descripcion,
-      fecha_solicitud:          data.fecha_solicitud,
-      fecha_termino_estimada:   data.fecha_termino_estimada || null,
+      department_id,
+      department_name_snapshot,
+      area_id,
+      area_name_snapshot,
+      encargado_nombre,
+      category_id:              category_id || null,
+      servicio,
+      descripcion,
+      fecha_solicitud,
+      fecha_termino_estimada:   fecha_termino_estimada || null,
       status:                   'pendiente',
     })
     .select('id, folio, created_at')
@@ -81,30 +95,61 @@ export async function createMaintenanceTicket(data: NewMaintenanceTicketFormData
 
   if (insertErr || !ticket) return { error: insertErr?.message ?? 'Error al crear solicitud' }
 
-  // Generar PDF
+  const serviceClient = getServiceClient()
+
+  // Subir foto si la hay y obtener data URL para el PDF
+  let photoUrl: string | null = null
+  if (photoFile && photoFile.size > 0) {
+    try {
+      const ext      = photoFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+      const photoPath = `maintenance/${ticket.id}/evidencia-${crypto.randomUUID()}.${ext}`
+      const buf      = Buffer.from(await photoFile.arrayBuffer())
+
+      const { error: photoUploadErr } = await serviceClient.storage
+        .from('maintenance-docs')
+        .upload(photoPath, buf, { contentType: photoFile.type })
+
+      if (!photoUploadErr) {
+        await serviceClient.from('maintenance_evidencias').insert({
+          ticket_id:   ticket.id,
+          uploaded_by: user.id,
+          file_name:   photoFile.name,
+          file_path:   photoPath,
+          file_size:   photoFile.size,
+          mime_type:   photoFile.type,
+          type:        'evidencia',
+        })
+        photoUrl = `data:${photoFile.type};base64,${buf.toString('base64')}`
+      }
+    } catch (e) {
+      console.error('[createMaintenanceTicket] photo upload failed:', e)
+    }
+  }
+
+  // Generar PDF (con foto si se subió)
   try {
     console.log('[PDF] Iniciando generación para ticket', ticket.id, 'folio', ticket.folio)
     const pdfElement = React.createElement(MaintenancePdfDocument, {
       data: {
-        folio:                  ticket.folio,
-        type:                   data.type,
-        fecha_solicitud:        data.fecha_solicitud,
-        fecha_termino_estimada: data.fecha_termino_estimada || null,
-        departamento:           data.department_name_snapshot,
-        encargado:              data.encargado_nombre,
-        area:                   data.area_name_snapshot,
-        servicio:               data.servicio,
-        descripcion:            data.descripcion,
+        folio,
+        type,
+        fecha_solicitud,
+        fecha_termino_estimada: fecha_termino_estimada || null,
+        departamento:           department_name_snapshot,
+        encargado:              encargado_nombre,
+        area:                   area_name_snapshot,
+        servicio,
+        descripcion,
         tecnico_nombre:         null,
         created_at:             ticket.created_at,
         logoPath:               getLogoDataUrl(),
+        photoUrl,
       },
     }) as unknown as Parameters<typeof renderToBuffer>[0]
     const pdfBuffer = await renderToBuffer(pdfElement)
 
     const pdfPath = `maintenance/${ticket.id}/solicitud-${ticket.folio}.pdf`
 
-    const serviceClient = getServiceClient()
     const { error: storageErr } = await serviceClient.storage
       .from('maintenance-docs')
       .upload(pdfPath, pdfBuffer, { contentType: 'application/pdf', upsert: true })
@@ -120,8 +165,8 @@ export async function createMaintenanceTicket(data: NewMaintenanceTicketFormData
         type:        'pdf_sistema',
       })
     }
-  } catch {
-    // PDF falla silenciosamente — ticket queda sin pdf_path
+  } catch (e) {
+    console.error('[createMaintenanceTicket] PDF generation failed:', e)
   }
 
   // Historial inicial
@@ -152,7 +197,7 @@ export async function createMaintenanceTicket(data: NewMaintenanceTicketFormData
   const actorNameM = actorProfileM?.full_name ?? actorProfileM?.email ?? 'Usuario'
   await createAdminNotification({
     title:       'Nueva solicitud de mantenimiento',
-    message:     `${actorNameM} solicitó "${data.servicio}" (${ticket.folio})`,
+    message:     `${actorNameM} solicitó "${servicio}" (${ticket.folio})`,
     type:        'maintenance_created',
     module:      'mantenimiento',
     actorId:     user.id,

@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { createMaintenanceTicket } from '@/actions/maintenance'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Loader2, Wrench } from 'lucide-react'
+import { Loader2, Wrench, ImagePlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MaintenanceType } from '@/lib/types'
 
@@ -30,6 +29,7 @@ interface Props {
 
 export function MaintenanceForm({ tipo, profile, departments, areas, categories }: Props) {
   const router = useRouter()
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
   // Pre-populate from profile
   const [deptId,    setDeptId]    = useState(profile.department_id ?? '')
@@ -42,9 +42,24 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
   const [descripcion, setDescripcion] = useState('')
   const [fechaSolicitud,   setFechaSolicitud]   = useState(todayISO())
   const [fechaTermino,     setFechaTermino]     = useState('')
+  const [photoFile,    setPhotoFile]    = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   const tipoLabel = tipo === 'general' ? 'Mantenimiento General' : 'Mantenimiento de Maquinaria'
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    if (!file) return
+    setPhotoFile(file)
+    setPhotoPreview(URL.createObjectURL(file))
+  }
+
+  function removePhoto() {
+    setPhotoFile(null)
+    setPhotoPreview(null)
+    if (photoInputRef.current) photoInputRef.current.value = ''
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -64,19 +79,21 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
     }
 
     setLoading(true)
-    const result = await createMaintenanceTicket({
-      type:                     tipo,
-      department_id:            deptId,
-      department_name_snapshot: deptName,
-      area_id:                  areaId,
-      area_name_snapshot:       areaName,
-      encargado_nombre:         encargado.trim(),
-      category_id:              catId,
-      servicio:                 servicio.trim(),
-      descripcion:              descripcion.trim(),
-      fecha_solicitud:          fechaSolicitud,
-      fecha_termino_estimada:   fechaTermino || '',
-    })
+    const fd = new FormData()
+    fd.set('type',                     tipo)
+    fd.set('department_id',            deptId)
+    fd.set('department_name_snapshot', deptName)
+    fd.set('area_id',                  areaId)
+    fd.set('area_name_snapshot',       areaName)
+    fd.set('encargado_nombre',         encargado.trim())
+    fd.set('category_id',              catId)
+    fd.set('servicio',                 servicio.trim())
+    fd.set('descripcion',              descripcion.trim())
+    fd.set('fecha_solicitud',          fechaSolicitud)
+    fd.set('fecha_termino_estimada',   fechaTermino)
+    if (photoFile) fd.set('photo', photoFile)
+
+    const result = await createMaintenanceTicket(fd)
 
     if (result.error) {
       toast.error(result.error)
@@ -247,6 +264,47 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
               required
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Fotografía */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Fotografía</CardTitle>
+          <CardDescription className="text-xs">Opcional — se incluirá en el PDF de la solicitud</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {photoPreview ? (
+            <div className="relative">
+              <img
+                src={photoPreview}
+                alt="Vista previa"
+                className="w-full max-h-48 object-contain rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900"
+              />
+              <button
+                type="button"
+                onClick={removePhoto}
+                disabled={loading}
+                className="absolute top-1.5 right-1.5 rounded-full bg-zinc-900/70 p-1 text-white hover:bg-zinc-900 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center gap-2 cursor-pointer rounded-md border border-dashed border-zinc-300 dark:border-zinc-700 px-4 py-6 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+              <ImagePlus className="h-7 w-7 text-zinc-400" />
+              <span className="text-sm text-zinc-500">Seleccionar imagen</span>
+              <span className="text-xs text-zinc-400">JPG, PNG, WEBP</span>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                disabled={loading}
+                onChange={handlePhotoChange}
+              />
+            </label>
+          )}
         </CardContent>
       </Card>
 
