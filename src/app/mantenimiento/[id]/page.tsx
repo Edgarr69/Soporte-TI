@@ -49,6 +49,7 @@ export default async function MantenimientoDetailPage({
         .from('maintenance_evidencias')
         .select('*')
         .eq('ticket_id', id)
+        .neq('type', 'pdf_sistema')
         .order('created_at', { ascending: true }),
     ])
 

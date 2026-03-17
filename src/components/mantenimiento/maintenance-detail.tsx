@@ -86,7 +86,6 @@ export function MaintenanceDetail({
   const canCancel = ticket.status === 'pendiente'
   const canUpload = ticket.status === 'terminado'
 
-  const pdfSistema = evidencias.find((e) => e.type === 'pdf_sistema')
   const otherEvidencias = evidencias.filter((e) => e.type === 'evidencia')
 
   async function submitComment() {
@@ -237,21 +236,6 @@ export function MaintenanceDetail({
               <CardTitle className="text-sm">Documentos</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {pdfSistema ? (
-                <a
-                  href={storageUrl(pdfSistema.file_path)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
-                >
-                  <FileText className="h-4 w-4 text-red-500 flex-shrink-0" />
-                  <span className="text-sm flex-1 truncate">{pdfSistema.file_name}</span>
-                  <span className="text-xs text-zinc-400">PDF del sistema</span>
-                </a>
-              ) : (
-                <p className="text-xs text-zinc-400">PDF en proceso de generación…</p>
-              )}
-
               {otherEvidencias.map((ev) => (
                 <a
                   key={ev.id}
@@ -267,6 +251,10 @@ export function MaintenanceDetail({
                   </span>
                 </a>
               ))}
+
+              {!canUpload && otherEvidencias.length === 0 && (
+                <p className="text-xs text-zinc-400">Sin documentos adjuntos.</p>
+              )}
 
               {canUpload && (
                 <label className="flex items-center gap-2 p-2.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer transition-colors">
