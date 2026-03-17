@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import type { MaintenanceStatus, NewMaintenanceTicketFormData } from '@/lib/types'
 import { createAdminNotification } from '@/actions/admin-notifications'
@@ -8,8 +9,26 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { MaintenancePdfDocument } from '@/components/mantenimiento/maintenance-pdf-template'
 import React from 'react'
 import path from 'path'
+import fs from 'fs'
 
 const LOGO_PATH = path.join(process.cwd(), 'fotos', 'logoo.png')
+
+function getLogoDataUrl(): string {
+  try {
+    const buf = fs.readFileSync(LOGO_PATH)
+    return `data:image/png;base64,${buf.toString('base64')}`
+  } catch {
+    return ''
+  }
+}
+
+function getServiceClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 // ─── Crear solicitud de mantenimiento ────────────────────
 
@@ -22,7 +41,13 @@ export async function createMaintenanceTicket(data: NewMaintenanceTicketFormData
   const module = data.type === 'general' ? 'general' : 'maquinaria'
   const { data: folioData, error: folioErr } = await supabase
     .rpc('generate_folio', { p_module: module })
-  if (folioErr || !folioData) return { error: 'Error generando folio' }
+  if (folioErr || !folioData) {
+    console.error('[generate_folio] module:', module, 'error:', JSON.stringify(folioErr))
+    if (folioErr?.message?.toLowerCase().includes('token') || folioErr?.message?.toLowerCase().includes('jwt')) {
+      return { error: 'Tu sesión expiró. Por favor cierra sesión y vuelve a entrar.' }
+    }
+    return { error: `Error generando folio: ${folioErr?.message ?? 'sin datos'}` }
+  }
   const folio = folioData as string
 
   // Insertar ticket (sin pdf_path aún)
@@ -51,6 +76,7 @@ export async function createMaintenanceTicket(data: NewMaintenanceTicketFormData
 
   // Generar PDF
   try {
+    console.log('[PDF] Iniciando generación para ticket', ticket.id, 'folio', ticket.folio)
     const pdfElement = React.createElement(MaintenancePdfDocument, {
       data: {
         folio:                  ticket.folio,
@@ -64,29 +90,21 @@ export async function createMaintenanceTicket(data: NewMaintenanceTicketFormData
         descripcion:            data.descripcion,
         tecnico_nombre:         null,
         created_at:             ticket.created_at,
-        logoPath:               LOGO_PATH,
+        logoPath:               getLogoDataUrl(),
       },
     }) as unknown as Parameters<typeof renderToBuffer>[0]
     const pdfBuffer = await renderToBuffer(pdfElement)
 
     const pdfPath = `maintenance/${ticket.id}/solicitud-${ticket.folio}.pdf`
 
-    const { error: storageErr } = await supabase.storage
+    const serviceClient = getServiceClient()
+    const { error: storageErr } = await serviceClient.storage
       .from('maintenance-docs')
-      .upload(pdfPath, pdfBuffer, {
-        contentType: 'application/pdf',
-        upsert: true,
-      })
+      .upload(pdfPath, pdfBuffer, { contentType: 'application/pdf', upsert: true })
 
     if (!storageErr) {
-      // Guardar path del PDF en el ticket
-      await supabase
-        .from('maintenance_tickets')
-        .update({ pdf_path: pdfPath })
-        .eq('id', ticket.id)
-
-      // Registrar en evidencias como pdf_sistema
-      await supabase.from('maintenance_evidencias').insert({
+      await supabase.from('maintenance_tickets').update({ pdf_path: pdfPath }).eq('id', ticket.id)
+      await serviceClient.from('maintenance_evidencias').insert({
         ticket_id:   ticket.id,
         uploaded_by: user.id,
         file_name:   `solicitud-${ticket.folio}.pdf`,
@@ -214,13 +232,14 @@ export async function changeMaintenanceStatus(
           descripcion:            ticket.descripcion ?? '',
           tecnico_nombre:         options?.tecnico_nombre_snapshot ?? null,
           created_at:             ticket.created_at,
-          logoPath:               LOGO_PATH,
+          logoPath:               getLogoDataUrl(),
         },
       }) as unknown as Parameters<typeof renderToBuffer>[0]
       const pdfBuffer = await renderToBuffer(pdfElement)
       const pdfPath = `maintenance/${ticketId}/solicitud-${ticket.folio}.pdf`
 
-      const { error: storageErr } = await supabase.storage
+      const serviceClient = getServiceClient()
+      const { error: storageErr } = await serviceClient.storage
         .from('maintenance-docs')
         .upload(pdfPath, pdfBuffer, { contentType: 'application/pdf', upsert: true })
 
@@ -228,7 +247,7 @@ export async function changeMaintenanceStatus(
         await supabase.from('maintenance_tickets').update({ pdf_path: pdfPath }).eq('id', ticketId)
 
         // Upsert en evidencias: reemplaza el pdf_sistema existente si lo hay
-        const { data: existing } = await supabase
+        const { data: existing } = await serviceClient
           .from('maintenance_evidencias')
           .select('id')
           .eq('ticket_id', ticketId)
@@ -236,11 +255,11 @@ export async function changeMaintenanceStatus(
           .single()
 
         if (existing) {
-          await supabase.from('maintenance_evidencias')
+          await serviceClient.from('maintenance_evidencias')
             .update({ file_path: pdfPath, file_name: `solicitud-${ticket.folio}.pdf`, updated_at: now })
             .eq('id', existing.id)
         } else {
-          await supabase.from('maintenance_evidencias').insert({
+          await serviceClient.from('maintenance_evidencias').insert({
             ticket_id:   ticketId,
             uploaded_by: user.id,
             file_name:   `solicitud-${ticket.folio}.pdf`,
@@ -476,4 +495,106 @@ export async function uploadEvidencia(
   revalidatePath(`/mantenimiento/${ticketId}`)
   revalidatePath(`/admin/mantenimiento/tickets/${ticketId}`)
   return { uploaded: results.length }
+}
+
+// ─── Regenerar PDF (admin) ────────────────────────────────
+
+export async function regeneratePdf(ticketId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (!profile || !['admin_mantenimiento', 'super_admin'].includes(profile.role))
+    return { error: 'Sin permiso' }
+
+  const { data: ticket } = await supabase
+    .from('maintenance_tickets')
+    .select('folio, type, fecha_solicitud, fecha_termino_estimada, department_name_snapshot, area_name_snapshot, encargado_nombre, servicio, descripcion, tecnico_nombre_snapshot, created_at')
+    .eq('id', ticketId)
+    .single()
+  if (!ticket) return { error: 'Ticket no encontrado' }
+
+  // Buscar primera evidencia (foto) para incluirla en el PDF
+  const serviceClient = getServiceClient()
+  const { data: firstPhoto } = await serviceClient
+    .from('maintenance_evidencias')
+    .select('file_path, mime_type')
+    .eq('ticket_id', ticketId)
+    .eq('type', 'evidencia')
+    .in('mime_type', ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .single()
+
+  let photoUrl: string | null = null
+  if (firstPhoto) {
+    try {
+      const { data: photoBytes } = await serviceClient.storage
+        .from('maintenance-docs')
+        .download(firstPhoto.file_path)
+      if (photoBytes) {
+        const buf = Buffer.from(await photoBytes.arrayBuffer())
+        photoUrl = `data:${firstPhoto.mime_type};base64,${buf.toString('base64')}`
+      }
+    } catch { /* sin foto */ }
+  }
+
+  try {
+    const pdfElement = React.createElement(MaintenancePdfDocument, {
+      data: {
+        folio:                  ticket.folio,
+        type:                   ticket.type as import('@/lib/types').MaintenanceType,
+        fecha_solicitud:        ticket.fecha_solicitud,
+        fecha_termino_estimada: ticket.fecha_termino_estimada ?? null,
+        departamento:           ticket.department_name_snapshot ?? '',
+        encargado:              ticket.encargado_nombre ?? '',
+        area:                   ticket.area_name_snapshot ?? '',
+        servicio:               ticket.servicio ?? '',
+        descripcion:            ticket.descripcion ?? '',
+        tecnico_nombre:         ticket.tecnico_nombre_snapshot ?? null,
+        created_at:             ticket.created_at,
+        logoPath:               getLogoDataUrl(),
+        photoUrl,
+      },
+    }) as unknown as Parameters<typeof renderToBuffer>[0]
+
+    const pdfBuffer = await renderToBuffer(pdfElement)
+    const pdfPath = `maintenance/${ticketId}/solicitud-${ticket.folio}.pdf`
+
+    const { error: storageErr } = await serviceClient.storage
+      .from('maintenance-docs')
+      .upload(pdfPath, pdfBuffer, { contentType: 'application/pdf', upsert: true })
+
+    if (storageErr) return { error: `Error subiendo PDF: ${storageErr.message}` }
+
+    await supabase.from('maintenance_tickets').update({ pdf_path: pdfPath }).eq('id', ticketId)
+
+    const { data: existing } = await serviceClient
+      .from('maintenance_evidencias')
+      .select('id')
+      .eq('ticket_id', ticketId)
+      .eq('type', 'pdf_sistema')
+      .single()
+
+    if (existing) {
+      await serviceClient.from('maintenance_evidencias')
+        .update({ file_path: pdfPath, file_name: `solicitud-${ticket.folio}.pdf` })
+        .eq('id', existing.id)
+    } else {
+      await serviceClient.from('maintenance_evidencias').insert({
+        ticket_id:   ticketId,
+        uploaded_by: user.id,
+        file_name:   `solicitud-${ticket.folio}.pdf`,
+        file_path:   pdfPath,
+        mime_type:   'application/pdf',
+        type:        'pdf_sistema',
+      })
+    }
+  } catch (e) {
+    return { error: `Error generando PDF: ${e instanceof Error ? e.message : String(e)}` }
+  }
+
+  revalidatePath(`/admin/mantenimiento/tickets/${ticketId}`)
+  return { success: true }
 }

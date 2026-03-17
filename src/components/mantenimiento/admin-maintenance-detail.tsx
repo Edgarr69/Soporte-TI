@@ -17,8 +17,8 @@ import {
   type MaintenanceStatus, type MaintenanceType,
 } from '@/lib/types'
 import { cn, formatDate } from '@/lib/utils'
-import { ChevronLeft, FileText, CheckCircle2, UserCheck, Play, Check, X, Upload, Download } from 'lucide-react'
-import { changeMaintenanceStatus, addMaintenanceComment, uploadEvidencia } from '@/actions/maintenance'
+import { ChevronLeft, FileText, CheckCircle2, UserCheck, Play, Check, X, Upload, Download, RefreshCw } from 'lucide-react'
+import { changeMaintenanceStatus, addMaintenanceComment, uploadEvidencia, regeneratePdf } from '@/actions/maintenance'
 import { toast } from 'sonner'
 
 interface HistoryEntry {
@@ -104,7 +104,8 @@ export function AdminMaintenanceDetail({
   const [cancelReason,  setCancelReason]  = useState('')
 
   // Upload evidencia
-  const [uploading, setUploading] = useState(false)
+  const [uploading,      setUploading]      = useState(false)
+  const [generatingPdf,  setGeneratingPdf]  = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const nextStatuses = MAINTENANCE_TRANSITIONS[ticket.status] ?? []
@@ -133,6 +134,18 @@ export function AdminMaintenanceDetail({
     if (r.error) { toast.error(r.error); return }
     toast.success('Comentario enviado')
     setComment('')
+    router.refresh()
+  }
+
+  const [pdfVersion, setPdfVersion] = useState(0)
+
+  async function handleGeneratePdf() {
+    setGeneratingPdf(true)
+    const r = await regeneratePdf(ticket.id)
+    setGeneratingPdf(false)
+    if (r.error) { toast.error(r.error); return }
+    setPdfVersion((v) => v + 1)
+    toast.success('PDF generado correctamente')
     router.refresh()
   }
 
@@ -243,6 +256,7 @@ export function AdminMaintenanceDetail({
                 <Input
                   type="date"
                   value={fechaTermino}
+                  min={ticket.fecha_solicitud}
                   onChange={(e) => setFechaTermino(e.target.value)}
                 />
               </div>
@@ -336,8 +350,18 @@ export function AdminMaintenanceDetail({
                   <FileText className="h-4 w-4 text-red-500 flex-shrink-0" />
                   <span className="text-sm flex-1 truncate text-zinc-700 dark:text-zinc-300">{pdfSistema.file_name}</span>
                   <span className="text-xs text-zinc-400 mr-1">PDF Sistema</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    disabled={generatingPdf}
+                    onClick={handleGeneratePdf}
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Regenerar
+                  </Button>
                   <a
-                    href={storageUrl(pdfSistema.file_path)}
+                    href={`${storageUrl(pdfSistema.file_path)}?v=${pdfVersion}`}
                     download={pdfSistema.file_name}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -348,7 +372,16 @@ export function AdminMaintenanceDetail({
                   </a>
                 </div>
               ) : (
-                <p className="text-xs text-zinc-400">PDF no generado aún.</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  disabled={generatingPdf}
+                  onClick={handleGeneratePdf}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${generatingPdf ? 'animate-spin' : ''}`} />
+                  {generatingPdf ? 'Generando PDF…' : 'Generar PDF'}
+                </Button>
               )}
               {otherEvid.map((ev) => (
                 <a key={ev.id} href={storageUrl(ev.file_path)} target="_blank" rel="noopener noreferrer"

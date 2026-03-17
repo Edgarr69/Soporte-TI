@@ -36,8 +36,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width:  80,
-    height: 40,
+    width:  90,
+    height: 45,
     objectFit: 'contain',
   },
   headerTitleBox: {
@@ -52,11 +52,11 @@ const s = StyleSheet.create({
     textAlign:  'center',
   },
   headerFolioBox: {
-    width:       90,
-    borderLeft:  `1px solid ${BORDER}`,
-    padding:     8,
+    width:          90,
+    borderLeft:     `1px solid ${BORDER}`,
+    padding:        8,
     justifyContent: 'flex-end',
-    alignItems:  'flex-end',
+    alignItems:     'flex-end',
   },
   folioLabel: { fontSize: 7.5, color: '#555555' },
   folioValue: { fontSize: 9, fontFamily: 'Helvetica-Bold' },
@@ -103,7 +103,7 @@ const s = StyleSheet.create({
   dataCellFull: {
     paddingVertical:   3,
     paddingHorizontal: 5,
-    flexDirection: 'row',
+    flexDirection: 'column',
   },
   dataLabel: {
     fontFamily: 'Helvetica-Bold',
@@ -114,6 +114,10 @@ const s = StyleSheet.create({
   dataValue: {
     fontSize: 8,
     flex: 1,
+  },
+  dataValueFull: {
+    fontSize: 8,
+    marginTop: 1,
   },
 
   // ── Celda de fotografía ─────────────────────────────────
@@ -157,9 +161,8 @@ const s = StyleSheet.create({
     borderTop: 0,
   },
   tableHeaderRow: {
-    flexDirection:   'row',
-    backgroundColor: GRAY_BG,
-    borderBottom:    `1px solid ${BORDER}`,
+    flexDirection: 'row',
+    borderBottom:  `1px solid ${BORDER}`,
   },
   tableHeaderCell: {
     fontFamily:  'Helvetica-Bold',
@@ -245,6 +248,7 @@ export interface MaintenancePdfData {
   tecnico_nombre:         string | null
   created_at:             string
   logoPath:               string  // ruta absoluta al logo en el servidor
+  photoUrl?:              string | null  // data URL o URL pública de la foto
 }
 
 const MATERIAL_ROWS  = 5
@@ -257,7 +261,7 @@ export function MaintenancePdfDocument({ data }: { data: MaintenancePdfData }) {
   })
 
   return (
-    <Document title={`Orden de Servicio ${data.folio}`} author="Sistema Interno">
+    <Document title={`Orden de Servicio ${data.folio}`} author="Sistema Interno" hyphenationCallback={(w) => [w]}>
       <Page size="LETTER" style={s.page}>
 
         {/* ── HEADER ── */}
@@ -310,32 +314,39 @@ export function MaintenancePdfDocument({ data }: { data: MaintenancePdfData }) {
             </View>
           </View>
 
-          {/* Fila 3: área (full width) */}
-          <View style={s.dataRow}>
-            <View style={s.dataCellFull}>
-              <Text style={s.dataLabel}>Area afectada:</Text>
-              <Text style={s.dataValue}>{data.area}</Text>
-            </View>
-          </View>
+          {/* Filas 3-5: área / servicio / descripción  |  fotografía (columna derecha) */}
+          <View style={{ flexDirection: 'row' }}>
 
-          {/* Fila 4: servicio (full width) */}
-          <View style={s.dataRow}>
-            <View style={s.dataCellFull}>
-              <Text style={s.dataLabel}>Servicio:</Text>
-              <Text style={s.dataValue}>{data.servicio}</Text>
+            {/* Columna izquierda */}
+            <View style={{ flex: 1, borderRight: `1px solid ${BORDER}` }}>
+              {/* Área */}
+              <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5, flexDirection: 'column' }}>
+                <Text style={s.dataLabel}>Area afectada:</Text>
+                <Text style={s.dataValueFull}>{data.area}</Text>
+              </View>
+              {/* Servicio */}
+              <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5, flexDirection: 'column' }}>
+                <Text style={s.dataLabel}>Servicio:</Text>
+                <Text style={s.dataValueFull}>{data.servicio}</Text>
+              </View>
+              {/* Descripción */}
+              <View style={{ paddingVertical: 3, paddingHorizontal: 5, minHeight: 50 }}>
+                <Text style={s.descLabel}>Descripcion del servicio:</Text>
+                <Text style={s.descValue}>{data.descripcion}</Text>
+              </View>
             </View>
-          </View>
 
-          {/* Fila 5: descripción | fotografía */}
-          <View style={s.dataRowLast}>
-            <View style={s.descCell}>
-              <Text style={s.descLabel}>Descripcion del servicio:</Text>
-              <Text style={s.descValue}>{data.descripcion}</Text>
-            </View>
-            <View style={s.photoCell}>
-              <Text style={s.photoLabel}>Fotografia</Text>
-              <View style={s.photoBox} />
-            </View>
+            {/* Columna derecha: fotografía (solo si hay imagen) */}
+            {data.photoUrl ? (
+              <View style={{ width: '40%', paddingVertical: 3, paddingHorizontal: 5 }}>
+                <Text style={s.photoLabel}>Fotografia</Text>
+                <Image
+                  style={{ flex: 1, marginTop: 2, objectFit: 'contain' }}
+                  src={data.photoUrl}
+                />
+              </View>
+            ) : null}
+
           </View>
         </View>
 

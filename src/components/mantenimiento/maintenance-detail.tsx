@@ -84,7 +84,7 @@ export function MaintenanceDetail({
   const [uploading,   setUploading]     = useState(false)
 
   const canCancel = ticket.status === 'pendiente'
-  const canUpload = ticket.status === 'terminado'
+  const canUpload = ticket.status !== 'cancelado'
 
   const otherEvidencias = evidencias.filter((e) => e.type === 'evidencia')
 

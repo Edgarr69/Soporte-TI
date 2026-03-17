@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Loader2, Wrench, Info } from 'lucide-react'
+import { Loader2, Wrench } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MaintenanceType } from '@/lib/types'
 
@@ -74,18 +74,13 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
       return
     }
 
-    toast.success(`Solicitud ${result.ticket?.folio} creada. Se generó el PDF automáticamente.`)
+    toast.success(`Solicitud ${result.ticket?.folio} creada correctamente.`)
     router.push('/dashboard')
     router.refresh()
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Info banner */}
-      <div className="flex gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 text-sm text-blue-700 dark:text-blue-300">
-        <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-        <span>Al enviar la solicitud se generará automáticamente un PDF de la orden de servicio.</span>
-      </div>
 
       {/* Datos generales */}
       <Card>
@@ -168,6 +163,7 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
                 id="fechaSolicitud"
                 type="date"
                 value={fechaSolicitud}
+                min={todayISO()}
                 onChange={(e) => setFechaSolicitud(e.target.value)}
                 disabled={loading}
                 required
@@ -252,7 +248,7 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Enviando solicitud y generando PDF…
+            Enviando solicitud…
           </>
         ) : (
           <>
