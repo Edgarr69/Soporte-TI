@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import { NotificationBell } from '@/components/shared/notification-bell'
@@ -60,17 +59,9 @@ export function TopBar({ unreadCount, userId, role }: Props) {
         <Menu className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
       </button>
 
-      {/* Centro: logo en móvil, título en tablet+ */}
+      {/* Título centrado */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <Image
-          src="/favicon.png"
-          alt="Logo"
-          width={28}
-          height={28}
-          className="rounded-full object-cover sm:hidden"
-          priority
-        />
-        <h1 className="hidden sm:block text-sm font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
+        <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
           {title}
         </h1>
       </div>

@@ -98,6 +98,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
   const containerControls             = useAnimationControls()
   const svgControls                   = useAnimationControls()
   const sidebarRef                    = useRef<HTMLElement>(null)
+  const toggleBlockRef                = useRef(false)
   const pathname                      = usePathname()
   const router                        = useRouter()
   const supabase                      = createClient()
@@ -110,6 +111,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
+      if (toggleBlockRef.current) { toggleBlockRef.current = false; return }
       if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
         setIsOpen(false)
       }
@@ -134,7 +136,10 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
   }, [])
 
   useEffect(() => {
-    const handler = () => setIsOpen((v) => !v)
+    const handler = () => {
+      toggleBlockRef.current = true
+      setIsOpen((v) => !v)
+    }
     window.addEventListener('sidebar:toggle', handler)
     return () => window.removeEventListener('sidebar:toggle', handler)
   }, [])
