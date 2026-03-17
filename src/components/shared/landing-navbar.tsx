@@ -5,8 +5,7 @@ import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Navbar, NavbarContent, NavbarItem,
-  NavbarMenu, NavbarMenuItem, NavbarMenuToggle, Button,
+  Navbar, NavbarContent, NavbarItem, Button,
 } from '@heroui/react'
 import { LogIn } from 'lucide-react'
 import { LoginModal } from '@/components/auth/login-modal'
@@ -58,7 +57,6 @@ export function LandingNavbar() {
       >
         {/* Pill 1: Logo */}
         <NavbarContent justify="center" className={PILL}>
-          <NavbarMenuToggle className="md:hidden pl-2 h-8 w-8" />
           <NavbarItem>
             <Image
               src="/favicon.png"
@@ -78,10 +76,10 @@ export function LandingNavbar() {
               variant="light"
               onPress={() => setIsLoginOpen(true)}
               startContent={<LogIn size={15} />}
-              className="hidden md:flex"
               size="md"
             >
-              Iniciar Sesión
+              <span className="hidden sm:inline">Iniciar Sesión</span>
+              <span className="sm:hidden">Entrar</span>
             </Button>
             <Button
               isIconOnly
@@ -93,29 +91,6 @@ export function LandingNavbar() {
             </Button>
           </NavbarItem>
         </NavbarContent>
-
-        {/* Mobile menu */}
-        <NavbarMenu>
-          <NavbarMenuItem>
-            <Button
-              variant="light"
-              onPress={() => { setIsLoginOpen(true) }}
-              startContent={<LogIn size={15} />}
-              className="p-0 w-full flex justify-start"
-            >
-              Iniciar Sesión
-            </Button>
-          </NavbarMenuItem>
-          <NavbarMenuItem>
-            <Button
-              variant="light"
-              onPress={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-              className="p-0 w-full flex justify-start"
-            >
-              Cambiar Tema
-            </Button>
-          </NavbarMenuItem>
-        </NavbarMenu>
       </Navbar>
 
       {/* Modal login */}
