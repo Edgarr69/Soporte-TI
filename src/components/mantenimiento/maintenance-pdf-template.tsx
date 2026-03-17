@@ -2,9 +2,12 @@
 // Formato corporativo — replica Orden de Servicio de Mantenimiento BWS
 
 import {
-  Document, Page, Text, View, StyleSheet, Image,
+  Document, Page, Text, View, StyleSheet, Image, Font,
 } from '@react-pdf/renderer'
+
 import { MaintenanceType } from '@/lib/types'
+
+Font.registerHyphenationCallback((w) => [w])
 
 const BORDER  = '#888888'
 const HEADER_BG = '#5a5a5a'
@@ -261,7 +264,7 @@ export function MaintenancePdfDocument({ data }: { data: MaintenancePdfData }) {
   })
 
   return (
-    <Document title={`Orden de Servicio ${data.folio}`} author="Sistema Interno" hyphenationCallback={(w) => [w]}>
+    <Document title={`Orden de Servicio ${data.folio}`} author="Sistema Interno">
       <Page size="LETTER" style={s.page}>
 
         {/* ── HEADER ── */}
