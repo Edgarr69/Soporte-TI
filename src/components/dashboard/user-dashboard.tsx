@@ -50,7 +50,7 @@ export function UserDashboard({ profile, sysTickets, maintTickets, recentNotifs 
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 space-y-10 pb-20 lg:pb-10">
+    <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-10 pb-20 lg:pb-10">
 
       {/* Encabezado */}
       <section className="space-y-1.5">
@@ -97,7 +97,7 @@ export function UserDashboard({ profile, sysTickets, maintTickets, recentNotifs 
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">
           Resumen de actividad
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard label="Sistemas abiertos"      value={sysCounts.abiertos}   color="text-sky-600"    bg="bg-sky-50 dark:bg-sky-950/20"    border="border-sky-200 dark:border-sky-900/50" />
           <StatCard label="Sistemas en proceso"    value={sysCounts.en_proceso} color="text-amber-600"  bg="bg-amber-50 dark:bg-amber-950/20"  border="border-amber-200 dark:border-amber-900/50" />
           <StatCard label="Sistemas resueltos"     value={sysCounts.resueltos}  color="text-green-600"  bg="bg-green-50 dark:bg-green-950/20"  border="border-green-200 dark:border-green-900/50" />
@@ -251,7 +251,7 @@ function QuickCard({
   return (
     <Card className="group border-zinc-200 dark:border-zinc-800 hover:border-zinc-900 dark:hover:border-zinc-100 transition-all hover:shadow-sm cursor-pointer">
       <Link href={href} className="block h-full">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className={cn('p-3 rounded-xl w-fit mb-4 group-hover:scale-105 transition-transform', iconBg)}>
             {icon}
           </div>
@@ -270,9 +270,9 @@ function StatCard({
 }) {
   return (
     <Card className={cn('border', border, bg)}>
-      <CardContent className="p-4">
+      <CardContent className="p-3 sm:p-4">
         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-tight mb-2">{label}</p>
-        <NumberTicker value={value} className={cn('text-3xl font-bold', color)} />
+        <NumberTicker value={value} className={cn('text-2xl sm:text-3xl font-bold', color)} />
       </CardContent>
     </Card>
   )

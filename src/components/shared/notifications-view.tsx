@@ -72,11 +72,11 @@ export function NotificationsView({ initialNotifications, userId }: Props) {
                   <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
                 )}
                 <div className={cn('flex-1', n.is_read && 'pl-5')}>
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-0.5 sm:gap-2">
                     <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                       {n.title}
                     </p>
-                    <span className="text-xs text-zinc-400 flex-shrink-0">
+                    <span className="text-xs text-zinc-400 sm:flex-shrink-0">
                       {formatRelative(n.created_at)}
                     </span>
                   </div>

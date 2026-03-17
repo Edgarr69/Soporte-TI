@@ -36,7 +36,7 @@ export function CatalogsView({ areas, generalCats, maqCats, departments, manager
     <div className="space-y-6">
       <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Catálogos</h1>
       <Tabs defaultValue="areas">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="areas">Áreas</TabsTrigger>
           <TabsTrigger value="cats-general">Categorías General</TabsTrigger>
           <TabsTrigger value="cats-maq">Categorías Maquinaria</TabsTrigger>
@@ -287,18 +287,20 @@ function ManagersPanel({
       </CardHeader>
       <CardContent className="space-y-2">
         {departments.map((d) => (
-          <div key={d.id} className="flex items-center gap-2">
-            <span className="text-sm w-40 flex-shrink-0 text-zinc-600 dark:text-zinc-400">{d.name}</span>
-            <Input
-              value={vals[d.id] ?? ''}
-              onChange={(e) => setVals((v) => ({ ...v, [d.id]: e.target.value }))}
-              placeholder="Nombre del encargado"
-              className="flex-1"
-              onKeyDown={(e) => e.key === 'Enter' && save(d.id)}
-            />
-            <Button size="sm" onClick={() => save(d.id)} disabled={saving === d.id}>
-              <Check className="h-4 w-4" />
-            </Button>
+          <div key={d.id} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+            <span className="text-sm sm:w-40 sm:flex-shrink-0 text-zinc-600 dark:text-zinc-400">{d.name}</span>
+            <div className="flex items-center gap-2 flex-1">
+              <Input
+                value={vals[d.id] ?? ''}
+                onChange={(e) => setVals((v) => ({ ...v, [d.id]: e.target.value }))}
+                placeholder="Nombre del encargado"
+                className="flex-1"
+                onKeyDown={(e) => e.key === 'Enter' && save(d.id)}
+              />
+              <Button size="sm" onClick={() => save(d.id)} disabled={saving === d.id}>
+                <Check className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         ))}
       </CardContent>

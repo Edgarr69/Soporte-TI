@@ -179,33 +179,33 @@ export function AdminMaintenanceDetail({
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {nextStatuses.includes('en_revision') && (
-              <Button size="sm" variant="outline" onClick={() => transition('en_revision')} disabled={transitioning}>
+              <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => transition('en_revision')} disabled={transitioning}>
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                 Poner en revisión
               </Button>
             )}
             {canAssign && (
-              <Button size="sm" onClick={() => setShowAssign(true)} disabled={transitioning}>
+              <Button size="sm" className="w-full sm:w-auto" onClick={() => setShowAssign(true)} disabled={transitioning}>
                 <UserCheck className="h-3.5 w-3.5 mr-1" />
                 Aprobar y asignar
               </Button>
             )}
             {nextStatuses.includes('en_proceso') && (
-              <Button size="sm" variant="outline" onClick={() => transition('en_proceso')} disabled={transitioning}>
+              <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => transition('en_proceso')} disabled={transitioning}>
                 <Play className="h-3.5 w-3.5 mr-1" />
                 Iniciar trabajo
               </Button>
             )}
             {nextStatuses.includes('terminado') && (
-              <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => transition('terminado')} disabled={transitioning}>
+              <Button size="sm" className="w-full sm:w-auto bg-green-600 hover:bg-green-700" onClick={() => transition('terminado')} disabled={transitioning}>
                 <Check className="h-3.5 w-3.5 mr-1" />
                 Marcar terminado
               </Button>
             )}
             {nextStatuses.includes('cancelado') && (
-              <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+              <Button size="sm" variant="outline" className="w-full sm:w-auto border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
                 onClick={() => setShowCancel(true)} disabled={transitioning}>
                 <X className="h-3.5 w-3.5 mr-1" />
                 Cancelar
@@ -462,8 +462,8 @@ export function AdminMaintenanceDetail({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex gap-2">
-      <span className="text-zinc-400 w-36 flex-shrink-0">{label}</span>
+    <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-2">
+      <span className="text-zinc-400 sm:w-36 sm:flex-shrink-0">{label}</span>
       <span className="text-zinc-700 dark:text-zinc-300 flex-1">{value}</span>
     </div>
   )

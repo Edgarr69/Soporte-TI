@@ -174,7 +174,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
                 {t.description}
               </p>
               <Separator />
-              <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                 <div>
                   <p className="text-xs text-zinc-400">Impide trabajar</p>
                   <p className="font-medium">{blockingMap[t.blocking_level]}</p>
@@ -277,7 +277,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
           <Card className="border-zinc-200 dark:border-zinc-800">
             <CardHeader className="pb-3"><CardTitle className="text-sm">Cambiar estado</CardTitle></CardHeader>
             <CardContent className="pt-0 space-y-3">
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Select
                   value={newStatus}
                   onValueChange={(v) => setNewStatus(v as TicketStatus)}
@@ -297,6 +297,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
                 <Button
                   onClick={handleChangeStatus}
                   disabled={!newStatus || isPending}
+                  className="w-full sm:w-auto"
                 >
                   {isPending && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
                   Cambiar

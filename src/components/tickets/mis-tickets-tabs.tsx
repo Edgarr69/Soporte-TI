@@ -38,7 +38,7 @@ export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets }: Props
 
   return (
     <Tabs defaultValue={defaultTab}>
-      <TabsList className="mb-4">
+      <TabsList className="mb-4 w-full sm:w-auto overflow-x-auto">
         <TabsTrigger value="sistemas" className="gap-1.5">
           <Monitor className="h-3.5 w-3.5" />
           Sistemas

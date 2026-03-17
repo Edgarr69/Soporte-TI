@@ -94,7 +94,7 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-zinc-500">Tu información</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 pt-0">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0">
           <div>
             <p className="text-xs text-zinc-400">Nombre</p>
             <p className="text-sm font-medium">{profile.full_name}</p>

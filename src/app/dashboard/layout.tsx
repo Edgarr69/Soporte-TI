@@ -29,7 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         profile={profile as unknown as Profile}
         role={profile.role as Role}
       />
-      <div className="ml-[4.5rem] flex flex-col min-h-screen">
+      <div className="sm:ml-[4.5rem] flex flex-col min-h-screen">
         <TopBar
           unreadCount={unreadCount ?? 0}
           userId={user.id}

@@ -27,13 +27,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         role={profile.role as Role}
         adminUnreadCount={adminUnread}
       />
-      <div className="ml-[4.5rem] flex flex-col min-h-screen">
+      <div className="sm:ml-[4.5rem] flex flex-col min-h-screen">
         <TopBar
           unreadCount={adminUnread}
           userId={user.id}
           role={profile.role as Role}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 sm:pb-8">
           {children}
         </main>
       </div>

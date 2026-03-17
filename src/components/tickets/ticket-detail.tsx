@@ -83,7 +83,7 @@ export function TicketDetail({ ticket, history, comments }: Props) {
             {t.description}
           </p>
           <Separator />
-          <div className="grid grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
               <p className="text-xs text-zinc-400">Impide trabajar</p>
               <p className="font-medium">{blockingMap[t.blocking_level] ?? t.blocking_level}</p>
@@ -187,9 +187,9 @@ export function TicketDetail({ ticket, history, comments }: Props) {
             return (
               <div key={entry.id} className="relative mb-4 pl-4">
                 <div className="absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950" />
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge className={cn('text-xs', STATUS_COLORS[entry.to_status as TicketStatus])}>
                         {STATUS_LABELS[entry.to_status as TicketStatus] ?? entry.to_status}
                       </Badge>

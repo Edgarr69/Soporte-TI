@@ -133,6 +133,12 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  useEffect(() => {
+    const handler = () => setIsOpen((v) => !v)
+    window.addEventListener('sidebar:toggle', handler)
+    return () => window.removeEventListener('sidebar:toggle', handler)
+  }, [])
+
   async function handleLogout() {
     setIsOpen(false)
     await supabase.auth.signOut()
@@ -142,16 +148,26 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
   }
 
   return (
-    <motion.nav
-      ref={sidebarRef as React.Ref<HTMLElement>}
-      variants={containerVariants}
-      animate={containerControls}
-      initial="close"
-      className="fixed flex flex-col rounded-r-xl z-50 gap-16 p-3 md:p-4 top-0 left-0 h-dvh overflow-hidden
-        shadow backdrop-blur-sm backdrop-saturate-150
-        bg-background/60 dark:bg-default-100/50
-        border-r border-gray-300 dark:border-gray-700/50"
-    >
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 sm:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+      <motion.nav
+        ref={sidebarRef as React.Ref<HTMLElement>}
+        variants={containerVariants}
+        animate={containerControls}
+        initial="close"
+        className={`fixed flex flex-col rounded-r-xl z-50 gap-16 p-3 md:p-4 top-0 left-0 h-dvh overflow-hidden
+          shadow backdrop-blur-sm backdrop-saturate-150
+          bg-background/60 dark:bg-default-100/50
+          border-r border-gray-300 dark:border-gray-700/50
+          transition-transform duration-300
+          sm:translate-x-0
+          ${!isOpen ? 'max-sm:-translate-x-full' : ''}`}
+      >
       {/* ─── Header: user + arrow ─── */}
       <div className="flex flex-row w-full justify-between items-center min-w-0">
         <div className={isOpen ? 'min-w-0 flex-1' : 'hidden'}>
@@ -320,6 +336,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
           </Button>
         </Tooltip>
       </div>
-    </motion.nav>
+      </motion.nav>
+    </>
   )
 }

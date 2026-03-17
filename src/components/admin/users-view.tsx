@@ -140,7 +140,7 @@ function UserRow({
           </div>
 
           {isSuperAdmin && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {editRole ? (
                 <>
                   <Select value={newRole} onValueChange={(v) => v && setNewRole(v as Role)}>

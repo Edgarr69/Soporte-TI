@@ -194,7 +194,7 @@ function KpiCard({
           {icon}
           <span className="text-xs text-zinc-500 dark:text-zinc-400">{label}</span>
         </div>
-        <NumberTicker value={value} className={cn('text-3xl font-bold', valueColor ?? 'text-zinc-900 dark:text-zinc-50')} />
+        <NumberTicker value={value} className={cn('text-2xl sm:text-3xl font-bold', valueColor ?? 'text-zinc-900 dark:text-zinc-50')} />
       </CardContent>
     </Card>
   )
@@ -202,11 +202,11 @@ function KpiCard({
 
 function TimeDisplay({ minutes }: { minutes: number | null }) {
   if (minutes === null)
-    return <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">—</p>
+    return <p className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-50">—</p>
   const isHours = minutes >= 60
   const display = isHours ? Math.round((minutes / 60) * 10) / 10 : minutes
   return (
-    <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 flex items-baseline gap-1">
+    <p className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-50 flex items-baseline gap-1">
       <NumberTicker value={display} decimalPlaces={isHours ? 1 : 0} />
       <span className="text-sm font-normal text-zinc-400">{isHours ? 'h' : 'min'}</span>
     </p>

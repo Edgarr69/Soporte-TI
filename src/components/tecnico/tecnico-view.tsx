@@ -45,7 +45,7 @@ interface Props {
 
 export function TecnicoView({ active, history, technicianName }: Props) {
   return (
-    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8 space-y-8">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 pb-20 lg:pb-8">
       <section>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           Hola, {technicianName.split(' ')[0] || 'técnico'}

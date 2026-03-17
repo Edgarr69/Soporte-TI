@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { Menu } from 'lucide-react'
 import { NotificationBell } from '@/components/shared/notification-bell'
 import type { Role } from '@/lib/types'
 
@@ -49,6 +50,15 @@ export function TopBar({ unreadCount, userId, role }: Props) {
       bg-background/60 dark:bg-default-100/50
       border-b border-gray-300 dark:border-gray-700/50"
     >
+      {/* Botón hamburguesa - solo móvil */}
+      <button
+        className="sm:hidden p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors relative z-10"
+        onClick={() => window.dispatchEvent(new CustomEvent('sidebar:toggle'))}
+        aria-label="Abrir menú"
+      >
+        <Menu className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
+      </button>
+
       {/* Título absolutamente centrado */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">

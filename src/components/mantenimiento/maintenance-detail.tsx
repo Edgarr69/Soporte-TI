@@ -351,8 +351,8 @@ export function MaintenanceDetail({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-2">
-      <span className="text-zinc-400 w-36 flex-shrink-0">{label}</span>
-      <span className="text-zinc-700 dark:text-zinc-300 flex-1">{value}</span>
+      <span className="text-zinc-400 w-28 sm:w-36 flex-shrink-0">{label}</span>
+      <span className="text-zinc-700 dark:text-zinc-300 flex-1 min-w-0 break-words">{value}</span>
     </div>
   )
 }
