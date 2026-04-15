@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { MaintenanceForm } from '@/components/mantenimiento/maintenance-form'
+import { getCachedDepartments, getCachedAreas, getCachedMaintenanceCategories } from '@/lib/catalog-cache'
 import { LinkButton } from '@/components/ui/link-button'
 import { ChevronLeft } from 'lucide-react'
 import type { MaintenanceType } from '@/lib/types'
@@ -28,15 +29,10 @@ export default async function NuevoMantenimientoPage({
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
 
-  const [{ data: departments }, { data: areas }, { data: categories }] = await Promise.all([
-    supabase.from('departments').select('id, name').order('name'),
-    supabase.from('areas').select('id, name').eq('is_active', true).order('sort_order'),
-    supabase
-      .from('maintenance_categories')
-      .select('id, name')
-      .eq('type', tipo)
-      .eq('is_active', true)
-      .order('sort_order'),
+  const [departments, areas, categories] = await Promise.all([
+    getCachedDepartments(),
+    getCachedAreas(),
+    getCachedMaintenanceCategories(tipo),
   ])
 
   const dept = profile?.department as { id: string; name: string } | null
@@ -65,9 +61,9 @@ export default async function NuevoMantenimientoPage({
             area_name:       null,
             encargado_nombre: profile?.encargado_nombre ?? null,
           }}
-          departments={departments ?? []}
-          areas={areas ?? []}
-          categories={categories ?? []}
+          departments={departments}
+          areas={areas}
+          categories={categories}
         />
     </main>
   )

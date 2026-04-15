@@ -34,25 +34,13 @@ interface Props {
   recentNotifs: Notification[]
 }
 
-export function UserDashboard({ profile, sysTickets, maintTickets, recentNotifs }: Props) {
+/** Solo el saludo y accesos rápidos — no necesita datos de tickets */
+export function DashboardHero({ profile }: { profile: Props['profile'] }) {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Buenos dias' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
 
-  const sysCounts = {
-    abiertos:   sysTickets.filter((t) => t.status === 'abierto' || t.status === 'reabierto').length,
-    en_proceso: sysTickets.filter((t) => t.status === 'en_proceso' || t.status === 'en_espera').length,
-    resueltos:  sysTickets.filter((t) => t.status === 'resuelto' || t.status === 'cerrado').length,
-  }
-
-  const maintCounts = {
-    activos:    maintTickets.filter((t) => !['terminado','cancelado'].includes(t.status)).length,
-    terminados: maintTickets.filter((t) => t.status === 'terminado').length,
-  }
-
   return (
-    <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-10 pb-20 lg:pb-10">
-
-      {/* Encabezado */}
+    <div className="space-y-6 sm:space-y-8">
       <section className="space-y-1.5">
         <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-zinc-50">
           {greeting}, {profile.full_name?.split(' ')[0] ?? 'usuario'}
@@ -62,7 +50,6 @@ export function UserDashboard({ profile, sysTickets, maintTickets, recentNotifs 
         </p>
       </section>
 
-      {/* Accesos rapidos */}
       <section className="space-y-4">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">
           Nueva solicitud
@@ -91,7 +78,25 @@ export function UserDashboard({ profile, sysTickets, maintTickets, recentNotifs 
           />
         </div>
       </section>
+    </div>
+  )
+}
 
+/** Resumen de actividad + tickets recientes — requiere datos de DB */
+export function UserDashboard({ profile, sysTickets, maintTickets, recentNotifs }: Props) {
+  const sysCounts = {
+    abiertos:   sysTickets.filter((t) => t.status === 'abierto' || t.status === 'reabierto').length,
+    en_proceso: sysTickets.filter((t) => t.status === 'en_proceso' || t.status === 'en_espera').length,
+    resueltos:  sysTickets.filter((t) => t.status === 'resuelto' || t.status === 'cerrado').length,
+  }
+
+  const maintCounts = {
+    activos:    maintTickets.filter((t) => !['terminado','cancelado'].includes(t.status)).length,
+    terminados: maintTickets.filter((t) => t.status === 'terminado').length,
+  }
+
+  return (
+    <div className="space-y-6 sm:space-y-10">
       {/* Resumen de actividad */}
       <section className="space-y-4">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">
@@ -239,7 +244,7 @@ export function UserDashboard({ profile, sysTickets, maintTickets, recentNotifs 
           )}
         </section>
       </div>
-    </main>
+    </div>
   )
 }
 

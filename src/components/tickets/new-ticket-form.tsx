@@ -51,11 +51,12 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
     () => subcategories.filter((s) => s.category_id === categoryId),
     [categoryId, subcategories]
   )
+  const hasSubcategories = filteredSubs.length > 0
 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!categoryId || !subcategoryId || !description.trim() || !blocking || !scope || !workaround) {
+    if (!categoryId || (hasSubcategories && !subcategoryId) || !description.trim() || !blocking || !scope || !workaround) {
       toast.error('Completa todos los campos requeridos.')
       return
     }
@@ -84,7 +85,7 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
     router.push('/dashboard')
   }
 
-  const isValid = categoryId && subcategoryId && description.trim().length >= 30
+  const isValid = categoryId && (!hasSubcategories || subcategoryId) && description.trim().length >= 30
     && blocking && scope && workaround
 
   return (
@@ -132,7 +133,7 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
             </Select>
           </div>
 
-          {categoryId && (
+          {categoryId && hasSubcategories && (
             <div className="space-y-1.5">
               <Label>Subcategoría *</Label>
               <Select

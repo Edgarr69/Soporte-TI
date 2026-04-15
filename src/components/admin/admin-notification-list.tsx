@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bell } from 'lucide-react'
 import { markAllAdminNotificationsRead, markOneAdminNotificationRead } from '@/actions/admin-notifications'
@@ -104,13 +104,13 @@ export function AdminNotificationList({ notifications: initial, role }: Props) {
   const [selected, setSelected]     = useState<NotifItem | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const filtered = items.filter((n) => {
+  const filtered = useMemo(() => items.filter((n) => {
     if (filter !== 'all' && effectiveModule(n) !== filter) return false
     if (unreadOnly && n.is_read) return false
     return true
-  })
+  }), [items, filter, unreadOnly])
 
-  const unreadCount = items.filter((n) => !n.is_read).length
+  const unreadCount = useMemo(() => items.filter((n) => !n.is_read).length, [items])
 
   async function openDetail(n: AdminNotification) {
     const item = toAdminNotifItem(n)

@@ -11,19 +11,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, role, first_login_completed')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, { count: unreadCount }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, email, role, first_login_completed')
+      .eq('id', user.id)
+      .single(),
+    supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false),
+  ])
 
   if (!profile) redirect('/login')
-
-  const { count: unreadCount } = await supabase
-    .from('notifications')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('is_read', false)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100/80 dark:from-zinc-950 dark:to-zinc-900/80">

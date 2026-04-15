@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 const ALLOWED_ROLES = ['admin_mantenimiento', 'super_admin']
 
@@ -28,6 +28,7 @@ export async function createArea(name: string) {
   const { error } = await supabase.from('areas').insert({ name: name.trim(), sort_order })
   if (error) return { error: error.message }
   revalidatePath('/admin/mantenimiento/catalogos')
+  revalidateTag('areas', {})
   return { success: true }
 }
 
@@ -40,6 +41,7 @@ export async function updateArea(id: string, name: string, is_active: boolean) {
   const { error } = await supabase.from('areas').update({ name: name.trim(), is_active }).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/mantenimiento/catalogos')
+  revalidateTag('areas', {})
   return { success: true }
 }
 
@@ -52,6 +54,7 @@ export async function deleteArea(id: string) {
   const { error } = await supabase.from('areas').delete().eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/mantenimiento/catalogos')
+  revalidateTag('areas', {})
   return { success: true }
 }
 
@@ -77,6 +80,7 @@ export async function createMaintenanceCategory(name: string, type: 'general' | 
   })
   if (error) return { error: error.message }
   revalidatePath('/admin/mantenimiento/catalogos')
+  revalidateTag('maintenance-categories', {})
   return { success: true }
 }
 
@@ -92,6 +96,7 @@ export async function updateMaintenanceCategory(id: string, name: string, is_act
     .eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/mantenimiento/catalogos')
+  revalidateTag('maintenance-categories', {})
   return { success: true }
 }
 

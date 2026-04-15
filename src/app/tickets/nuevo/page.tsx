@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { NewTicketForm } from '@/components/tickets/new-ticket-form'
+import { getCachedTicketCategories, getCachedTicketSubcategories } from '@/lib/catalog-cache'
 
 export default async function NewTicketPage() {
   const supabase = await createClient()
@@ -17,15 +18,10 @@ export default async function NewTicketPage() {
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
 
-  const { data: categories } = await supabase
-    .from('ticket_categories')
-    .select('id, name, icon')
-    .order('sort_order')
-
-  const { data: subcategories } = await supabase
-    .from('ticket_subcategories')
-    .select('id, category_id, name, base_score')
-    .order('sort_order')
+  const [categories, subcategories] = await Promise.all([
+    getCachedTicketCategories(),
+    getCachedTicketSubcategories(),
+  ])
 
   return (
     <main className="mx-auto max-w-2xl px-4 sm:px-6 py-8">
@@ -38,8 +34,8 @@ export default async function NewTicketPage() {
           </p>
         </div>
         <NewTicketForm
-          categories={categories ?? []}
-          subcategories={subcategories ?? []}
+          categories={categories}
+          subcategories={subcategories}
           profile={profile}
         />
     </main>

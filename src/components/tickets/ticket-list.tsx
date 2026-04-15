@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -30,7 +30,7 @@ export function TicketList({ tickets }: { tickets: TicketRow[] }) {
   const [status,   setStatus]   = useState('all')
   const [priority, setPriority] = useState('all')
 
-  const filtered = tickets.filter((t) => {
+  const filtered = useMemo(() => tickets.filter((t) => {
     const q = search.toLowerCase()
     const matchSearch = !q || t.folio.toLowerCase().includes(q) ||
       t.description.toLowerCase().includes(q) ||
@@ -38,7 +38,7 @@ export function TicketList({ tickets }: { tickets: TicketRow[] }) {
     const matchStatus   = status   === 'all' || t.status   === status
     const matchPriority = priority === 'all' || t.priority === priority
     return matchSearch && matchStatus && matchPriority
-  })
+  }), [tickets, search, status, priority])
 
   return (
     <div className="space-y-4">

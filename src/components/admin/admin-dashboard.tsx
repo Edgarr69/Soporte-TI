@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -33,15 +34,16 @@ interface Props {
 export function AdminDashboardView({
   metrics, topUsers, byCategory, byDepartment, monthly, recentTickets,
 }: Props) {
-  const monthlyChart = monthly.map((m) => ({
+  const monthlyChart = useMemo(() => monthly.map((m) => ({
     label: m.month.slice(5, 7) + '/' + m.month.slice(2, 4),
     value: m.count,
-  }))
+  })), [monthly])
 
-  const categoryChart = byCategory
+  const categoryChart = useMemo(() => byCategory
+    .slice()
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
-    .map((c) => ({ label: c.name, value: c.count }))
+    .map((c) => ({ label: c.name, value: c.count })), [byCategory])
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
