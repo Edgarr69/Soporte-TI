@@ -119,7 +119,7 @@ export async function changeTicketStatus(
 
   const { data: ticket } = await supabase
     .from('tickets')
-    .select('status, user_id, folio, first_response_at, created_at')
+    .select('status, user_id, folio, first_response_at, created_at, reopen_count')
     .eq('id', ticketId)
     .single()
   if (!ticket) return { error: 'Ticket no encontrado' }
@@ -149,10 +149,11 @@ export async function changeTicketStatus(
   }
 
   if (newStatus === 'reabierto') {
-    updates.is_reopened = true
-    updates.reopened_at = now
-    updates.resolved_at = null
-    updates.closed_at   = null
+    updates.is_reopened  = true
+    updates.reopened_at  = now
+    updates.resolved_at  = null
+    updates.closed_at    = null
+    updates.reopen_count = (ticket.reopen_count ?? 0) + 1
   }
 
   const { error } = await supabase

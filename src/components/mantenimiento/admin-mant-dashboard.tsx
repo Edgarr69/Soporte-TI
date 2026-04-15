@@ -65,7 +65,8 @@ function fmtMinutes(minutes: number | null): { value: number; unit: string } | n
 
 export function AdminMantenimientoDashboard({ tickets }: Props) {
   const today = todayStr()
-  const [fromDate, setFromDate] = useState(today)
+  const defaultFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const [fromDate, setFromDate] = useState(defaultFrom)
   const [toDate,   setToDate]   = useState(today)
 
   function handleFromChange(val: string) {

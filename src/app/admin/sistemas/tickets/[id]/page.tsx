@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import { AdminTicketDetail } from '@/components/admin/admin-ticket-detail'
 
 interface Props { params: Promise<{ id: string }> }
@@ -9,6 +9,10 @@ interface Props { params: Promise<{ id: string }> }
 export default async function AdminTicketDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (!profile || !['admin_sistemas', 'super_admin'].includes(profile.role)) redirect('/dashboard')
 
   const { data: ticket } = await supabase
     .from('tickets')

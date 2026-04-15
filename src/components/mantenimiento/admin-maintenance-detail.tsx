@@ -17,8 +17,8 @@ import {
   type MaintenanceStatus, type MaintenanceType,
 } from '@/lib/types'
 import { cn, formatDate } from '@/lib/utils'
-import { ChevronLeft, FileText, CheckCircle2, UserCheck, Play, Check, X, Upload, Download, RefreshCw, RotateCcw } from 'lucide-react'
-import { changeMaintenanceStatus, addMaintenanceComment, uploadEvidencia, regeneratePdf, reassignTecnico } from '@/actions/maintenance'
+import { ChevronLeft, FileText, CheckCircle2, UserCheck, Play, Check, X, Upload, Download, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
+import { changeMaintenanceStatus, addMaintenanceComment, uploadEvidencia, regeneratePdf, reassignTecnico, deleteEvidencia } from '@/actions/maintenance'
 import { toast } from 'sonner'
 
 interface HistoryEntry {
@@ -109,9 +109,10 @@ export function AdminMaintenanceDetail({
   const [reassignComment,    setReassignComment]    = useState('')
   const [reassigning,        setReassigning]        = useState(false)
 
-  // Upload evidencia
+  // Upload / delete evidencia
   const [uploading,      setUploading]      = useState(false)
   const [generatingPdf,  setGeneratingPdf]  = useState(false)
+  const [deletingEvid,   setDeletingEvid]   = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const nextStatuses = MAINTENANCE_TRANSITIONS[ticket.status] ?? []
@@ -182,6 +183,15 @@ export function AdminMaintenanceDetail({
     router.refresh()
   }
 
+  async function handleDeleteEvidencia(evidenciaId: string) {
+    setDeletingEvid(evidenciaId)
+    const r = await deleteEvidencia(evidenciaId, ticket.id)
+    setDeletingEvid(null)
+    if (r.error) { toast.error(r.error); return }
+    toast.success('Archivo eliminado')
+    router.refresh()
+  }
+
   const pdfSistema     = evidencias.find((e) => e.type === 'pdf_sistema') ?? null
   const otherEvid      = evidencias.filter((e) => e.type === 'evidencia')
   const canGeneratePdf = !!ticket.tecnico_id && !pdfSistema
@@ -189,6 +199,8 @@ export function AdminMaintenanceDetail({
     ticket.tecnico_reassigned_at && pdfSistema &&
     ticket.tecnico_reassigned_at > pdfSistema.created_at
   )
+  // Reabierto: bloquear regenerar, descargar y subir hasta que se apruebe y asigne técnico
+  const pdfBlockedByReopen = ['pendiente', 'en_revision'].includes(ticket.status) && !!pdfSistema
 
   return (
     <div className="space-y-6">
@@ -219,47 +231,51 @@ export function AdminMaintenanceDetail({
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {nextStatuses.includes('en_revision') && (
-              <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => transition('en_revision')} disabled={transitioning}>
-                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+              <Button size="default" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm px-5"
+                onClick={() => transition('en_revision')} disabled={transitioning}>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
                 Poner en revisión
               </Button>
             )}
             {canAssign && (
-              <Button size="sm" className="w-full sm:w-auto" onClick={() => setShowAssign(true)} disabled={transitioning}>
-                <UserCheck className="h-3.5 w-3.5 mr-1" />
+              <Button size="default" className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md px-5"
+                onClick={() => setShowAssign(true)} disabled={transitioning}>
+                <UserCheck className="h-4 w-4 mr-2" />
                 Aprobar y asignar
               </Button>
             )}
             {nextStatuses.includes('en_proceso') && (
-              <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => transition('en_proceso')} disabled={transitioning}>
-                <Play className="h-3.5 w-3.5 mr-1" />
+              <Button size="default" className="w-full sm:w-auto font-semibold shadow-sm px-5 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600 disabled:bg-green-300 dark:disabled:bg-green-900 disabled:text-white/60 transition-colors"
+                onClick={() => transition('en_proceso')} disabled={transitioning}>
+                <Play className="h-4 w-4 mr-2" />
                 Iniciar trabajo
               </Button>
             )}
             {nextStatuses.includes('terminado') && (
-              <Button size="sm" className="w-full sm:w-auto bg-green-600 hover:bg-green-700" onClick={() => transition('terminado')} disabled={transitioning}>
-                <Check className="h-3.5 w-3.5 mr-1" />
+              <Button size="default" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm px-5"
+                onClick={() => transition('terminado')} disabled={transitioning}>
+                <Check className="h-4 w-4 mr-2" />
                 Marcar terminado
               </Button>
             )}
             {nextStatuses.includes('cancelado') && (
-              <Button size="sm" variant="outline" className="w-full sm:w-auto border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+              <Button size="default" variant="outline" className="w-full sm:w-auto border-red-400 text-red-600 hover:bg-red-600 hover:text-white font-semibold shadow-sm px-5 transition-colors"
                 onClick={() => setShowCancel(true)} disabled={transitioning}>
-                <X className="h-3.5 w-3.5 mr-1" />
+                <X className="h-4 w-4 mr-2" />
                 Cancelar
               </Button>
             )}
             {nextStatuses.includes('pendiente') && (
-              <Button size="sm" variant="outline" className="w-full sm:w-auto border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+              <Button size="default" variant="outline" className="w-full sm:w-auto border-blue-400 text-blue-600 hover:bg-blue-600 hover:text-white font-semibold shadow-sm px-5 transition-colors"
                 onClick={() => transition('pendiente')} disabled={transitioning}>
-                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                <RotateCcw className="h-4 w-4 mr-2" />
                 Reabrir
               </Button>
             )}
             {(ticket.status === 'asignado' || ticket.status === 'en_proceso') && (
-              <Button size="sm" variant="outline" className="w-full sm:w-auto"
+              <Button size="default" variant="outline" className="w-full sm:w-auto border-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold px-5"
                 onClick={() => setShowReassign(true)} disabled={transitioning}>
-                <UserCheck className="h-3.5 w-3.5 mr-1" />
+                <UserCheck className="h-4 w-4 mr-2" />
                 Reasignar técnico
               </Button>
             )}
@@ -455,15 +471,16 @@ export function AdminMaintenanceDetail({
                     size="sm"
                     variant="ghost"
                     className="h-7 px-2 text-xs"
-                    disabled={generatingPdf}
+                    disabled={generatingPdf || pdfBlockedByReopen}
+                    title={pdfBlockedByReopen ? 'Asigna un técnico y fecha antes de regenerar' : undefined}
                     onClick={handleGeneratePdf}
                   >
                     <RefreshCw className={`h-3 w-3 mr-1 ${generatingPdf ? 'animate-spin' : ''}`} />
                     Regenerar
                   </Button>
-                  {needsPdfRegen ? (
+                  {(needsPdfRegen || pdfBlockedByReopen) ? (
                     <span className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-zinc-300 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 text-xs font-medium cursor-not-allowed"
-                      title="Regenera el PDF antes de descargar">
+                      title={pdfBlockedByReopen ? 'Asigna un técnico y fecha antes de descargar' : 'Regenera el PDF antes de descargar'}>
                       <Download className="h-3 w-3" />
                       Descargar
                     </span>
@@ -484,12 +501,24 @@ export function AdminMaintenanceDetail({
 
               {/* Evidencias (PDFs llenados / fotos) */}
               {otherEvid.map((ev) => (
-                <a key={ev.id} href={storageUrl(ev.file_path)} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                <div key={ev.id} className="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
                   <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                  <span className="text-sm flex-1 truncate">{ev.file_name}</span>
-                  <span className="text-xs text-zinc-400">{formatDate(ev.created_at)}</span>
-                </a>
+                  <a href={storageUrl(ev.file_path)} target="_blank" rel="noopener noreferrer"
+                    className="text-sm flex-1 truncate hover:underline">
+                    {ev.file_name}
+                  </a>
+                  <span className="text-xs text-zinc-400 mr-1">{formatDate(ev.created_at)}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                    disabled={deletingEvid === ev.id}
+                    onClick={() => handleDeleteEvidencia(ev.id)}
+                    title="Eliminar archivo"
+                  >
+                    <Trash2 className={`h-3 w-3 ${deletingEvid === ev.id ? 'animate-pulse' : ''}`} />
+                  </Button>
+                </div>
               ))}
 
               {!canGeneratePdf && !pdfSistema && !otherEvid.length && (
@@ -510,7 +539,8 @@ export function AdminMaintenanceDetail({
                     size="sm"
                     variant="outline"
                     className="w-full"
-                    disabled={uploading}
+                    disabled={uploading || pdfBlockedByReopen}
+                    title={pdfBlockedByReopen ? 'Asigna un técnico y fecha antes de subir' : undefined}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-3.5 w-3.5 mr-1.5" />

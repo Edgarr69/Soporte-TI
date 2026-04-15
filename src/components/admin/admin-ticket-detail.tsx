@@ -24,19 +24,12 @@ import {
 } from '@/components/ui/select'
 import {
   STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS,
+  TICKET_TRANSITIONS,
   type TicketStatus, type Priority,
 } from '@/lib/types'
 import { formatDateTime, formatRelative, minutesToHuman, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
-const ALLOWED_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
-  abierto:    ['en_proceso', 'en_espera', 'cerrado'],
-  en_proceso: ['en_espera', 'resuelto', 'cerrado'],
-  en_espera:  ['en_proceso', 'resuelto', 'cerrado'],
-  resuelto:   ['cerrado', 'reabierto'],
-  cerrado:    ['reabierto'],
-  reabierto:  ['en_proceso', 'en_espera', 'resuelto', 'cerrado'],
-}
 
 interface Props {
   ticket: Record<string, unknown>
@@ -73,7 +66,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
   const [techNotes,     setTechNotes]     = useState(t.technical_notes ?? '')
   const [comments,      setComments]      = useState(initialComments)
 
-  const allowedStatuses = ALLOWED_TRANSITIONS[t.status] ?? []
+  const allowedStatuses = TICKET_TRANSITIONS[t.status] ?? []
 
   const blockingMap: Record<string, string> = {
     total: 'Sí, totalmente', partial: 'Sí, parcialmente', none: 'No',
@@ -297,10 +290,18 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
                 <Button
                   onClick={handleChangeStatus}
                   disabled={!newStatus || isPending}
-                  className="w-full sm:w-auto"
+                  className={cn(
+                    'w-full sm:w-auto font-semibold shadow-sm px-5 transition-colors',
+                    newStatus === 'resuelto'   && 'bg-green-600 hover:bg-green-700 text-white',
+                    newStatus === 'cerrado'    && 'bg-zinc-700 hover:bg-zinc-800 text-white',
+                    newStatus === 'reabierto'  && 'bg-blue-600 hover:bg-blue-700 text-white',
+                    newStatus === 'en_proceso' && 'bg-amber-500 hover:bg-amber-600 text-white',
+                    newStatus === 'en_espera'  && 'bg-orange-500 hover:bg-orange-600 text-white',
+                    !newStatus                 && 'opacity-50 cursor-not-allowed',
+                  )}
                 >
-                  {isPending && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
-                  Cambiar
+                  {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Cambiar estado
                 </Button>
               </div>
               <Textarea

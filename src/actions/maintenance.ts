@@ -461,6 +461,36 @@ export async function uploadEvidencia(
   return { uploaded: results.length }
 }
 
+// ─── Eliminar evidencia (sin historial) ──────────────────
+
+export async function deleteEvidencia(
+  evidenciaId: string,
+  ticketId: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (!profile || !['admin_mantenimiento', 'super_admin'].includes(profile.role))
+    return { error: 'Sin permiso' }
+
+  const { data: ev } = await supabase
+    .from('maintenance_evidencias')
+    .select('file_path')
+    .eq('id', evidenciaId)
+    .single()
+
+  if (!ev) return { error: 'Evidencia no encontrada' }
+
+  const serviceClient = getServiceClient()
+  await serviceClient.storage.from('maintenance-docs').remove([ev.file_path])
+  await serviceClient.from('maintenance_evidencias').delete().eq('id', evidenciaId)
+
+  revalidatePath(`/admin/mantenimiento/tickets/${ticketId}`)
+  return {}
+}
+
 // ─── Regenerar PDF (admin) ────────────────────────────────
 
 export async function regeneratePdf(ticketId: string) {

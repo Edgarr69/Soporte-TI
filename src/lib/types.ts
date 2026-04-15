@@ -49,6 +49,15 @@ export type TicketStatus =
 
 export type Priority = 'baja' | 'media' | 'alta' | 'critica'
 
+export const TICKET_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
+  abierto:    ['en_proceso', 'en_espera', 'cerrado'],
+  en_proceso: ['en_espera', 'resuelto', 'cerrado'],
+  en_espera:  ['en_proceso', 'resuelto', 'cerrado'],
+  resuelto:   ['cerrado', 'reabierto'],
+  cerrado:    ['reabierto'],
+  reabierto:  ['en_proceso', 'en_espera', 'resuelto', 'cerrado'],
+}
+
 export type BlockingLevel = 'total' | 'partial' | 'none'
 export type AffectedScope = 'single' | 'multiple'
 
