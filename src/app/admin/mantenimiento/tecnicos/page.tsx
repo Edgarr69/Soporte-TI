@@ -29,7 +29,6 @@ export default async function TecnicosPage() {
     .order('full_name')
 
   if (error) console.error('[TecnicosPage] error:', error)
-  console.log('[TecnicosPage] tecnicos encontrados:', tecnicos?.length ?? 0, tecnicos)
 
   return (
     <TecnicosView

@@ -31,8 +31,6 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
   const [encargado, setEncargado] = useState(prefilled.encargado_nombre ?? defaultManager)
   const [loading,   setLoading]   = useState(false)
 
-  // Cuando cambia departamento, actualizar encargado default si no fue editado
-  const [managerEdited, setManagerEdited] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -118,7 +116,7 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
               id="encargado"
               placeholder="Nombre del encargado"
               value={encargado}
-              onChange={(e) => { setEncargado(e.target.value); setManagerEdited(true) }}
+              onChange={(e) => setEncargado(e.target.value)}
               required disabled={loading}
             />
           </div>

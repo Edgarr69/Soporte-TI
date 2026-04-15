@@ -73,7 +73,6 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
       const { data, error } = await supabase
         .rpc('get_admin_notifications_for_user', { p_limit: 20, p_offset: 0 })
       if (error) console.error('[NotificationBell] RPC error:', error)
-      console.log('[NotificationBell] data:', data)
       setItems((data ?? []).map((n: AdminNotification) => toAdminItem(n)))
     } else {
       const { data } = await supabase

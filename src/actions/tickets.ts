@@ -247,8 +247,8 @@ export async function updateTicketResolution(
     .select('role')
     .eq('id', user.id)
     .single()
-  const allowedRoles2 = ['admin_sistemas', 'super_admin']
-  if (!adminProfile || !allowedRoles2.includes(adminProfile.role)) return { error: 'Sin permiso' }
+  const allowedRoles = ['admin_sistemas', 'super_admin']
+  if (!adminProfile || !allowedRoles.includes(adminProfile.role)) return { error: 'Sin permiso' }
 
   const updates: Record<string, unknown> = {}
   if (data.resolution_summary !== undefined)

@@ -43,6 +43,9 @@ next-env.d.ts
 # Claude
 CLAUDE.md
 
+# Archivos de contexto local (uso interno, no van al repo)
+docs/
+
 # Scripts de administración local (contienen credenciales)
 scripts/
 
