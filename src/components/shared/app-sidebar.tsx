@@ -93,7 +93,6 @@ interface Props {
 
 export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
   const [isOpen, setIsOpen]           = useState(false)
-  const [openTooltip, setOpenTooltip] = useState<string | null>(null)
   const containerControls             = useAnimationControls()
   const svgControls                   = useAnimationControls()
   const sidebarRef                    = useRef<HTMLElement>(null)
@@ -118,10 +117,6 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
     window.addEventListener('click', handler)
     return () => window.removeEventListener('click', handler)
   }, [])
-
-  useEffect(() => {
-    if (isOpen) setOpenTooltip(null)
-  }, [isOpen])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -201,7 +196,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
                   classNames={{ wrapper: 'min-w-0 max-w-[120px]' }}
                 />
               </PopoverTrigger>
-              <PopoverContent className="p-4 w-[240px]">
+              <PopoverContent className="p-4 w-[240px] bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-700">
                 <div className="flex flex-col gap-3">
                   <User
                     name={profile.full_name ?? 'Usuario'}
@@ -214,21 +209,15 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
                         name: 'text-white dark:text-zinc-900 text-sm font-bold',
                       },
                     }}
+                    classNames={{
+                      name:        'text-zinc-900 dark:text-zinc-100',
+                      description: 'text-zinc-500 dark:text-zinc-400',
+                    }}
                   />
                   <Divider />
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     Última sesión: {new Date().toLocaleDateString('es-MX')}
                   </p>
-                  <Button
-                    color="danger"
-                    variant="flat"
-                    onPress={handleLogout}
-                    startContent={<LogOut size={15} />}
-                    className="w-full justify-start"
-                    size="sm"
-                  >
-                    Cerrar sesión
-                  </Button>
                 </div>
               </PopoverContent>
             </Popover>
@@ -236,15 +225,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
         </div>
 
         {/* Animated arrow */}
-        <Tooltip
-          placement="right"
-          content={
-            <span className="flex items-center gap-1 text-xs">
-              Abrir/Cerrar
-              <kbd className="px-1 py-0.5 text-[10px] bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-300 dark:border-zinc-700">Ctrl B</kbd>
-            </span>
-          }
-        >
+        <Tooltip placement="right" content="Abrir">
           <button
             className="p-1 rounded-full flex-shrink-0"
             onClick={() => setIsOpen((v) => !v)}
@@ -277,42 +258,35 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
           const hasUnread = badge && adminUnreadCount > 0
 
           return (
-            <Tooltip
+            <Link
               key={href}
-              content={label}
-              placement="right"
-              isOpen={openTooltip === href && !isOpen}
-              onOpenChange={(open) => setOpenTooltip(open ? href : null)}
+              href={href}
+              onClick={() => setIsOpen(false)}
+              className={`overflow-hidden whitespace-nowrap tracking-wide flex gap-3 items-center
+                cursor-pointer rounded-lg py-2 transition-colors
+                ${isOpen ? 'px-2' : 'justify-center px-0'}
+                ${active
+                  ? 'text-blue-500 dark:text-blue-400 font-semibold'
+                  : 'text-zinc-500 dark:text-white hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/60 dark:hover:bg-white/10'
+                }`}
             >
-              <Link
-                href={href}
-                onClick={() => setIsOpen(false)}
-                className={`overflow-hidden whitespace-nowrap tracking-wide flex gap-3 items-center
-                  cursor-pointer rounded-lg py-2 transition-colors
-                  ${isOpen ? 'px-2' : 'justify-center px-0'}
-                  ${active
-                    ? 'text-blue-500 dark:text-blue-400 font-semibold'
-                    : 'text-zinc-500 dark:text-white hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/60 dark:hover:bg-white/10'
-                  }`}
-              >
-                <div className="relative flex-shrink-0">
-                  <Icon size={18} />
-                  {hasUnread && !isOpen && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500" />
-                  )}
-                </div>
-                {isOpen && (
-                  <span className="flex-1 text-sm truncate">
-                    {label}
-                    {hasUnread && (
-                      <span className="ml-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-bold text-white">
-                        {adminUnreadCount > 99 ? '99+' : adminUnreadCount}
-                      </span>
-                    )}
-                  </span>
+              <div className="relative flex-shrink-0">
+                <Icon size={18} />
+                {hasUnread && !isOpen && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500" />
                 )}
-              </Link>
-            </Tooltip>
+              </div>
+              {isOpen && (
+                <span className="flex-1 text-sm truncate">
+                  {label}
+                  {hasUnread && (
+                    <span className="ml-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-bold text-white">
+                      {adminUnreadCount > 99 ? '99+' : adminUnreadCount}
+                    </span>
+                  )}
+                </span>
+              )}
+            </Link>
           )
         })}
       </div>
@@ -321,24 +295,17 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
       <div className="flex flex-col gap-2">
         <ThemeToggleSlide isOpen={isOpen} />
 
-        <Tooltip
-          content="Cerrar Sesión"
-          placement="right"
-          isOpen={openTooltip === 'logout' && !isOpen}
-          onOpenChange={(open) => setOpenTooltip(open ? 'logout' : null)}
+        <Button
+          isIconOnly={!isOpen}
+          variant="light"
+          color="danger"
+          onPress={handleLogout}
+          startContent={<LogOut size={16} />}
+          className={isOpen ? 'flex justify-start w-full' : 'mx-auto'}
+          size="sm"
         >
-          <Button
-            isIconOnly={!isOpen}
-            variant="light"
-            color="danger"
-            onPress={handleLogout}
-            startContent={<LogOut size={16} />}
-            className={isOpen ? 'flex justify-start w-full' : 'mx-auto'}
-            size="sm"
-          >
-            {isOpen && <span className="font-normal text-sm">Cerrar Sesión</span>}
-          </Button>
-        </Tooltip>
+          {isOpen && <span className="font-normal text-sm">Cerrar Sesión</span>}
+        </Button>
       </div>
       </motion.nav>
     </>

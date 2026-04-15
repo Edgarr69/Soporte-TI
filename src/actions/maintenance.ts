@@ -149,6 +149,7 @@ export async function createMaintenanceTicket(formData: FormData) {
     user_id:   user.id,
     ticket_id: null,
     type:      'ticket_created',
+    module:    'mantenimiento',
     title:     'Solicitud de mantenimiento creada',
     body:      `${creatorNameM} ha creado una solicitud de mantenimiento pendiente de revisión`,
   })
@@ -291,6 +292,7 @@ export async function changeMaintenanceStatus(
     user_id:   ticket.user_id,
     ticket_id: null,
     type:      'status_changed',
+    module:    'mantenimiento',
     title:     'Estado de solicitud actualizado',
     body:      `${adminNotifNameM} ${maintVerbsNotif[newStatus]}${options?.comment ? `: ${options.comment}` : ''}`,
   })
@@ -373,6 +375,7 @@ export async function addMaintenanceComment(
       user_id:   ticket.user_id,
       ticket_id: null,
       type:      'comment_added',
+      module:    'mantenimiento',
       title:     `Nuevo comentario en ${ticket.folio}`,
       body:      body.slice(0, 120),
     })

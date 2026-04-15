@@ -183,6 +183,7 @@ export interface Notification {
   user_id: string
   ticket_id: string | null
   type: NotificationType
+  module: 'sistemas' | 'mantenimiento' | null
   title: string
   body: string | null
   is_read: boolean

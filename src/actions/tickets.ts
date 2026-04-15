@@ -61,6 +61,7 @@ export async function createTicket(data: NewTicketFormData) {
     user_id:   user.id,
     ticket_id: null,
     type:      'ticket_created',
+    module:    'sistemas',
     title:     'Ticket de sistemas creado',
     body:      `${creatorName} ha creado un ticket de sistemas con prioridad ${priority}`,
   })
@@ -188,6 +189,7 @@ export async function changeTicketStatus(
     user_id:   ticket.user_id,
     ticket_id: ticketId,
     type:      newStatus === 'reabierto' ? 'ticket_reopened' : 'status_changed',
+    module:    'sistemas',
     title:     'Estado de ticket actualizado',
     body:      `${adminNameNotif} ${statusVerbNotif}${comment ? `: ${comment}` : ''}`,
   })
@@ -303,6 +305,7 @@ export async function addComment(
       user_id:   ticket.user_id,
       ticket_id: ticketId,
       type:      'comment_added',
+      module:    'sistemas',
       title:     `Nuevo comentario en ${ticket.folio}`,
       body:      body.slice(0, 120),
     })

@@ -39,3 +39,8 @@ export async function markAllAdminNotificationsRead() {
   await supabase.rpc('mark_all_admin_notifications_read')
   revalidatePath('/admin/historial')
 }
+
+export async function markOneAdminNotificationRead(id: string) {
+  const supabase = await createClient()
+  await supabase.rpc('mark_admin_notification_read', { p_notification_id: id })
+}

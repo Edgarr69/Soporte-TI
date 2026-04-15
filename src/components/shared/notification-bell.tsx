@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Bell } from 'lucide-react'
+import { Bell, ExternalLink } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -14,42 +14,9 @@ import type { Notification, AdminNotification, Role } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { NotifDetailModal, toNotifItem, toAdminNotifItem, type NotifItem } from './notif-detail-modal'
 
 const ADMIN_ROLES: Role[] = ['admin_sistemas', 'admin_mantenimiento', 'super_admin']
-
-interface NotifItem {
-  id: string
-  title: string
-  body: string | null
-  created_at: string
-  is_read: boolean
-  href: string | null
-}
-
-function toItem(n: Notification): NotifItem {
-  return {
-    id:         n.id,
-    title:      n.title,
-    body:       n.body,
-    created_at: n.created_at,
-    is_read:    n.is_read,
-    href:       n.ticket_id ? `/tickets/${n.ticket_id}` : null,
-  }
-}
-
-function toAdminItem(n: AdminNotification): NotifItem {
-  let href: string | null = null
-  if (n.target_type === 'ticket')             href = `/admin/sistemas/tickets/${n.target_id}`
-  if (n.target_type === 'maintenance_ticket') href = `/admin/mantenimiento/tickets/${n.target_id}`
-  return {
-    id:         n.id,
-    title:      n.title,
-    body:       n.message,
-    created_at: n.created_at,
-    is_read:    n.is_read,
-    href,
-  }
-}
 
 interface Props {
   unreadCount: number
@@ -58,12 +25,16 @@ interface Props {
 }
 
 export function NotificationBell({ unreadCount: initialCount, userId, role }: Props) {
-  const supabase  = createClient()
-  const isAdmin   = ADMIN_ROLES.includes(role)
-  const [count, setCount]    = useState(initialCount)
-  const [items, setItems]    = useState<NotifItem[]>([])
-  const [open, setOpen]      = useState(false)
-  const [loaded, setLoaded]  = useState(false)
+  const supabase = createClient()
+  const isAdmin  = ADMIN_ROLES.includes(role)
+
+  const [count, setCount]       = useState(initialCount)
+  const [items, setItems]       = useState<NotifItem[]>([])
+  const [open, setOpen]         = useState(false)
+  const [loaded, setLoaded]     = useState(false)
+  const [selected, setSelected] = useState<NotifItem | null>(null)
+
+  useEffect(() => { setCount(initialCount) }, [initialCount])
 
   async function handleOpen(isOpen: boolean) {
     setOpen(isOpen)
@@ -73,7 +44,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
       const { data, error } = await supabase
         .rpc('get_admin_notifications_for_user', { p_limit: 20, p_offset: 0 })
       if (error) console.error('[NotificationBell] RPC error:', error)
-      setItems((data ?? []).map((n: AdminNotification) => toAdminItem(n)))
+      setItems((data ?? []).map((n: AdminNotification) => toAdminNotifItem(n)))
     } else {
       const { data } = await supabase
         .from('notifications')
@@ -81,10 +52,23 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(20)
-      setItems((data ?? []).map((n: Notification) => toItem(n)))
+      setItems((data ?? []).map((n: Notification) => toNotifItem(n)))
     }
-
     setLoaded(true)
+  }
+
+  async function openDetail(item: NotifItem) {
+    setOpen(false)
+    setSelected(item)
+    if (!item.is_read) {
+      if (isAdmin) {
+        await supabase.rpc('mark_admin_notification_read', { p_notification_id: item.id })
+      } else {
+        await supabase.from('notifications').update({ is_read: true }).eq('id', item.id)
+      }
+      setItems((prev) => prev.map((n) => n.id === item.id ? { ...n, is_read: true } : n))
+      setCount((c) => Math.max(0, c - 1))
+    }
   }
 
   async function markAllRead() {
@@ -105,80 +89,87 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
   const footerLabel = isAdmin ? 'Ver historial completo' : 'Ver todas las notificaciones'
 
   return (
-    <DropdownMenu open={open} onOpenChange={handleOpen}>
-      <DropdownMenuTrigger className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'relative')}>
-        <Bell className="h-6 w-6" />
-        {count > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-zinc-950">
-            {count > 99 ? '99+' : count}
-          </span>
-        )}
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent align="end" sideOffset={8} className="w-96 p-0 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
-          <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            {isAdmin ? 'Actividad reciente' : 'Notificaciones'}
-          </span>
+    <>
+      <DropdownMenu open={open} onOpenChange={handleOpen}>
+        <DropdownMenuTrigger className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'relative')}>
+          <Bell className="h-6 w-6" />
           {count > 0 && (
-            <button
-              onClick={markAllRead}
-              className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-            >
-              Marcar todas como leídas
-            </button>
+            <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-zinc-950">
+              {count > 99 ? '99+' : count}
+            </span>
           )}
-        </div>
+        </DropdownMenuTrigger>
 
-        {/* List */}
-        <div className="max-h-80 overflow-y-auto p-2 space-y-1.5">
-          {items.length === 0 ? (
-            <p className="py-8 text-center text-sm text-zinc-400">Sin notificaciones</p>
-          ) : (
-            items.map((n) => {
-              const card = (
-                <div
+        <DropdownMenuContent align="end" sideOffset={8} className="w-96 p-0 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
+            <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              {isAdmin ? 'Actividad reciente' : 'Notificaciones'}
+            </span>
+            {count > 0 && (
+              <button
+                onClick={markAllRead}
+                className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+              >
+                Marcar todas como leídas
+              </button>
+            )}
+          </div>
+
+          <div className="max-h-80 overflow-y-auto p-2 space-y-1.5">
+            {items.length === 0 ? (
+              <p className="py-8 text-center text-sm text-zinc-400">Sin notificaciones</p>
+            ) : (
+              items.map((n) => (
+                <button
                   key={n.id}
+                  onClick={() => openDetail(n)}
                   className={cn(
-                    'rounded-xl px-5 py-4 shadow-sm transition-shadow hover:shadow-md',
+                    'w-full text-left rounded-xl px-4 py-3 transition-all hover:shadow-md cursor-pointer',
                     n.is_read
-                      ? 'bg-white dark:bg-zinc-900'
-                      : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700',
-                    n.href && 'cursor-pointer',
+                      ? 'bg-zinc-50 dark:bg-zinc-800/50'
+                      : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-sm',
                   )}
                 >
-                  <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug">
-                    {n.title}
-                  </p>
-                  {n.body && (
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2">
-                      {n.body}
-                    </p>
-                  )}
-                  <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
-                    {format(new Date(n.created_at), "d/M/yyyy, HH:mm:ss", { locale: es })}
-                  </p>
-                </div>
-              )
+                  <div className="flex items-start gap-2">
+                    {!n.is_read && (
+                      <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
+                    )}
+                    <div className={cn('min-w-0 flex-1', n.is_read && 'pl-4')}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 leading-snug truncate">
+                          {n.title}
+                        </p>
+                        <ExternalLink size={12} className="flex-shrink-0 text-zinc-300 dark:text-zinc-600" />
+                      </div>
+                      {n.body && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-1">
+                          {n.body}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-zinc-400 mt-0.5">
+                        {format(new Date(n.created_at), "d MMM, HH:mm", { locale: es })}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
 
-              return n.href
-                ? <Link key={n.id} href={n.href}>{card}</Link>
-                : <div key={n.id}>{card}</div>
-            })
-          )}
-        </div>
+          <div className="border-t border-zinc-100 dark:border-zinc-800 px-4 py-2.5">
+            <Link
+              href={footerHref}
+              className="block text-center text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+            >
+              {footerLabel}
+            </Link>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-        {/* Footer */}
-        <div className="border-t border-zinc-100 dark:border-zinc-800 px-4 py-2.5">
-          <Link
-            href={footerHref}
-            className="block text-center text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-          >
-            {footerLabel}
-          </Link>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      {selected && (
+        <NotifDetailModal item={selected} onClose={() => setSelected(null)} />
+      )}
+    </>
   )
 }

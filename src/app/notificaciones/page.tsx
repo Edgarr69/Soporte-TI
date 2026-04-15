@@ -17,12 +17,24 @@ export default async function NotificationsPage() {
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
 
-  const { data: notifications } = await supabase
+  const role = profile.role
+
+  let notifQuery = supabase
     .from('notifications')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(50)
+
+  // admin_sistemas solo ve sistemas; admin_mantenimiento solo ve mantenimiento
+  // super_admin ve todo; usuarios normales y técnicos ven todo lo suyo
+  if (role === 'admin_sistemas') {
+    notifQuery = notifQuery.eq('module', 'sistemas')
+  } else if (role === 'admin_mantenimiento') {
+    notifQuery = notifQuery.eq('module', 'mantenimiento')
+  }
+
+  const { data: notifications } = await notifQuery
 
   return (
     <main className="mx-auto max-w-2xl px-4 sm:px-6 py-8">

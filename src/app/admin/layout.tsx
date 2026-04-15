@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AppSidebar } from '@/components/shared/app-sidebar'
@@ -27,13 +29,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         role={profile.role as Role}
         adminUnreadCount={adminUnread}
       />
-      <div className="sm:ml-[4.5rem] flex flex-col min-h-screen">
+      <div className="sm:ml-[4.5rem] flex flex-col h-dvh overflow-hidden">
         <TopBar
           unreadCount={adminUnread}
           userId={user.id}
           role={profile.role as Role}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 sm:pb-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-20 sm:pb-8 flex flex-col">
           {children}
         </main>
       </div>
