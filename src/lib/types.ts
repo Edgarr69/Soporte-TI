@@ -299,8 +299,8 @@ export const MAINTENANCE_TRANSITIONS: Record<MaintenanceStatus, MaintenanceStatu
   en_revision:['asignado', 'cancelado'],
   asignado:   ['en_proceso', 'cancelado'],
   en_proceso: ['terminado', 'cancelado'],
-  terminado:  [],
-  cancelado:  [],
+  terminado:  ['pendiente'],
+  cancelado:  ['pendiente'],
 }
 
 export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {

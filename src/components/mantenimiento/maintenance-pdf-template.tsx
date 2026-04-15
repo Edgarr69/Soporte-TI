@@ -39,8 +39,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width:  90,
-    height: 45,
+    width:     90,
+    height:    45,
     objectFit: 'contain',
   },
   headerTitleBox: {
@@ -206,7 +206,7 @@ const s = StyleSheet.create({
     border:    `1px solid ${BORDER}`,
     borderTop: 0,
     padding:   5,
-    minHeight: 35,
+    flex:      1,  // llena el espacio restante de la página
   },
   obsLabel: {
     fontFamily: 'Helvetica-Bold',
@@ -250,7 +250,7 @@ export interface MaintenancePdfData {
   descripcion:            string
   tecnico_nombre:         string | null
   created_at:             string
-  logoPath:               string  // ruta absoluta al logo en el servidor
+  logoSrc:                string | null
   photoUrl?:              string | null  // data URL o URL pública de la foto
 }
 
@@ -271,7 +271,11 @@ export function MaintenancePdfDocument({ data }: { data: MaintenancePdfData }) {
         <View style={s.headerRow}>
           {/* Logo */}
           <View style={s.headerLogoBox}>
-            <Image style={s.logo} src={data.logoPath} />
+            {data.logoSrc ? (
+              <Image style={s.logo} src={data.logoSrc} />
+            ) : (
+              <Text style={{ fontSize: 7, color: '#888888' }}>LOGO</Text>
+            )}
           </View>
 
           {/* Título */}
@@ -317,65 +321,101 @@ export function MaintenancePdfDocument({ data }: { data: MaintenancePdfData }) {
             </View>
           </View>
 
-          {/* Filas 3-5: área / servicio / descripción  |  fotografía (columna derecha) */}
-          <View style={{ flexDirection: 'row' }}>
+          {/* Filas 3+: área / servicio / descripción [+ seguimiento si hay foto] | fotografía */}
+          {data.photoUrl ? (
+            /* ── CON FOTO: foto ocupa toda la altura incluyendo seguimiento ── */
+            <View style={{ flexDirection: 'row', minHeight: 200 }}>
 
-            {/* Columna izquierda */}
-            <View style={{ flex: 1, borderRight: `1px solid ${BORDER}` }}>
-              {/* Área */}
-              <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5, flexDirection: 'column' }}>
-                <Text style={s.dataLabel}>Area afectada:</Text>
-                <Text style={s.dataValueFull}>{data.area}</Text>
+              {/* Columna izquierda: datos + seguimiento */}
+              <View style={{ flex: 1, borderRight: `1px solid ${BORDER}` }}>
+                {/* Área */}
+                <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5 }}>
+                  <Text style={s.dataLabel}>Area afectada:</Text>
+                  <Text style={s.dataValueFull}>{data.area}</Text>
+                </View>
+                {/* Servicio */}
+                <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5 }}>
+                  <Text style={s.dataLabel}>Servicio:</Text>
+                  <Text style={s.dataValueFull}>{data.servicio}</Text>
+                </View>
+                {/* Descripción */}
+                <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5, flex: 1 }}>
+                  <Text style={s.descLabel}>Descripcion del servicio:</Text>
+                  <Text style={s.descValue}>{data.descripcion}</Text>
+                </View>
+                {/* Mini barra Seguimiento */}
+                <View style={{ backgroundColor: HEADER_BG, paddingVertical: 3, paddingHorizontal: 5 }}>
+                  <Text style={s.sectionBarText}>Seguimiento del Servicio</Text>
+                </View>
+                {/* Servicio asignado */}
+                <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5, flexDirection: 'row' }}>
+                  <Text style={s.dataLabel}>Servicio asignado a:</Text>
+                  <Text style={s.dataValue}>{data.tecnico_nombre ?? ''}</Text>
+                </View>
+                {/* Encargado */}
+                <View style={{ paddingVertical: 3, paddingHorizontal: 5, flexDirection: 'row' }}>
+                  <Text style={s.dataLabel}>Encargado del departamento:</Text>
+                  <Text style={s.dataValue} />
+                </View>
               </View>
-              {/* Servicio */}
-              <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5, flexDirection: 'column' }}>
-                <Text style={s.dataLabel}>Servicio:</Text>
-                <Text style={s.dataValueFull}>{data.servicio}</Text>
-              </View>
-              {/* Descripción */}
-              <View style={{ paddingVertical: 3, paddingHorizontal: 5, minHeight: 50 }}>
-                <Text style={s.descLabel}>Descripcion del servicio:</Text>
-                <Text style={s.descValue}>{data.descripcion}</Text>
-              </View>
-            </View>
 
-            {/* Columna derecha: fotografía (solo si hay imagen) */}
-            {data.photoUrl ? (
-              <View style={{ width: '40%', paddingVertical: 3, paddingHorizontal: 5 }}>
+              {/* Columna derecha: fotografía — llena toda la altura combinada */}
+              <View style={{ width: '40%', paddingTop: 3, paddingHorizontal: 5 }}>
                 <Text style={s.photoLabel}>Fotografia</Text>
                 <Image
                   style={{ flex: 1, marginTop: 2, objectFit: 'contain' }}
                   src={data.photoUrl}
                 />
               </View>
-            ) : null}
 
-          </View>
+            </View>
+          ) : (
+            /* ── SIN FOTO: layout original solo área/servicio/descripción ── */
+            <View style={{ flexDirection: 'row', minHeight: 100 }}>
+              <View style={{ flex: 1 }}>
+                {/* Área */}
+                <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5 }}>
+                  <Text style={s.dataLabel}>Area afectada:</Text>
+                  <Text style={s.dataValueFull}>{data.area}</Text>
+                </View>
+                {/* Servicio */}
+                <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5 }}>
+                  <Text style={s.dataLabel}>Servicio:</Text>
+                  <Text style={s.dataValueFull}>{data.servicio}</Text>
+                </View>
+                {/* Descripción */}
+                <View style={{ paddingVertical: 3, paddingHorizontal: 5, flex: 1 }}>
+                  <Text style={s.descLabel}>Descripcion del servicio:</Text>
+                  <Text style={s.descValue}>{data.descripcion}</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
 
-        {/* ── SEGUIMIENTO DEL SERVICIO ── */}
-        <View style={[s.sectionBar, { marginTop: 8 }]}>
-          <Text style={s.sectionBarText}>Seguimiento del Servicio</Text>
-        </View>
+        {/* ── SEGUIMIENTO DEL SERVICIO (solo cuando NO hay foto) ── */}
+        {!data.photoUrl && (
+          <>
+            <View style={[s.sectionBar, { marginTop: 8 }]}>
+              <Text style={s.sectionBarText}>Seguimiento del Servicio</Text>
+            </View>
 
-        <View style={s.dataTable}>
-          <View style={s.dataRow}>
-            <View style={s.dataCell}>
-              <Text style={s.dataLabel}>Servicio asignado a:</Text>
-              <Text style={s.dataValue}>{data.tecnico_nombre ?? ''}</Text>
+            <View style={s.dataTable}>
+              <View style={s.dataRow}>
+                <View style={{ flex: 1, paddingVertical: 3, paddingHorizontal: 5, flexDirection: 'row' }}>
+                  <Text style={s.dataLabel}>Servicio asignado a:</Text>
+                  <Text style={s.dataValue}>{data.tecnico_nombre ?? ''}</Text>
+                </View>
+              </View>
+              <View style={s.dataRowLast}>
+                <View style={{ flex: 1, paddingVertical: 3, paddingHorizontal: 5, flexDirection: 'row' }}>
+                  <Text style={s.dataLabel}>Encargado del departamento:</Text>
+                  <Text style={s.dataValue} />
+                </View>
+              </View>
             </View>
-            <View style={s.dataCellLast}>
-              <Text style={s.dataLabel} />
-              <Text style={s.dataValue} />
-            </View>
-          </View>
-          <View style={s.dataRowLast}>
-            <View style={s.dataCellFull}>
-              <Text style={s.dataLabel}>Encargado del departamento:</Text>
-              <Text style={s.dataValue} />
-            </View>
-          </View>
-        </View>
+          </>
+        )}
 
         {/* ── COMPRA DE MATERIAL ── */}
         <View style={[s.sectionBar, { marginTop: 8 }]}>

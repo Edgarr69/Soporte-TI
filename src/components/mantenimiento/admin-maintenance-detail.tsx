@@ -17,8 +17,8 @@ import {
   type MaintenanceStatus, type MaintenanceType,
 } from '@/lib/types'
 import { cn, formatDate } from '@/lib/utils'
-import { ChevronLeft, FileText, CheckCircle2, UserCheck, Play, Check, X, Upload, Download, RefreshCw } from 'lucide-react'
-import { changeMaintenanceStatus, addMaintenanceComment, uploadEvidencia, regeneratePdf } from '@/actions/maintenance'
+import { ChevronLeft, FileText, CheckCircle2, UserCheck, Play, Check, X, Upload, Download, RefreshCw, RotateCcw } from 'lucide-react'
+import { changeMaintenanceStatus, addMaintenanceComment, uploadEvidencia, regeneratePdf, reassignTecnico } from '@/actions/maintenance'
 import { toast } from 'sonner'
 
 interface HistoryEntry {
@@ -79,7 +79,6 @@ interface Props {
   comments: Comment[]
   evidencias: Evidencia[]
   technicians: Technician[]
-  currentAdminId: string
   supabaseUrl: string
 }
 
@@ -102,6 +101,12 @@ export function AdminMaintenanceDetail({
   // Cancel panel
   const [showCancel,    setShowCancel]    = useState(false)
   const [cancelReason,  setCancelReason]  = useState('')
+
+  // Reassign panel
+  const [showReassign,     setShowReassign]     = useState(false)
+  const [reassignComment,  setReassignComment]  = useState('')
+  const [reassigning,      setReassigning]      = useState(false)
+  const [needsPdfRegen,    setNeedsPdfRegen]    = useState(false)
 
   // Upload evidencia
   const [uploading,      setUploading]      = useState(false)
@@ -137,15 +142,31 @@ export function AdminMaintenanceDetail({
     router.refresh()
   }
 
-  const [pdfVersion, setPdfVersion] = useState(0)
+  const [pdfCacheBust, setPdfCacheBust] = useState(() => Date.now())
 
   async function handleGeneratePdf() {
     setGeneratingPdf(true)
     const r = await regeneratePdf(ticket.id)
     setGeneratingPdf(false)
     if (r.error) { toast.error(r.error); return }
-    setPdfVersion((v) => v + 1)
+    setPdfCacheBust(Date.now())
+    setNeedsPdfRegen(false)
     toast.success('PDF generado correctamente')
+    router.refresh()
+  }
+
+  async function handleReassign() {
+    if (!tecnicoId) { toast.error('Selecciona un técnico'); return }
+    setReassigning(true)
+    const tech = technicians.find((t) => t.id === tecnicoId)
+    const nombre = tech ? (tech.full_name ?? tech.email) : tecnicoId
+    const r = await reassignTecnico(ticket.id, tecnicoId, nombre, reassignComment || undefined)
+    setReassigning(false)
+    if (r.error) { toast.error(r.error); return }
+    setShowReassign(false)
+    setReassignComment('')
+    setNeedsPdfRegen(true)
+    toast.success('Técnico reasignado — regenera el PDF para actualizarlo')
     router.refresh()
   }
 
@@ -162,8 +183,9 @@ export function AdminMaintenanceDetail({
     router.refresh()
   }
 
-  const pdfSistema = evidencias.find((e) => e.type === 'pdf_sistema')
-  const otherEvid  = evidencias.filter((e) => e.type === 'evidencia')
+  const pdfSistema     = evidencias.find((e) => e.type === 'pdf_sistema') ?? null
+  const otherEvid      = evidencias.filter((e) => e.type === 'evidencia')
+  const canGeneratePdf = !!ticket.tecnico_id && !pdfSistema
 
   return (
     <div className="space-y-6">
@@ -222,6 +244,20 @@ export function AdminMaintenanceDetail({
                 onClick={() => setShowCancel(true)} disabled={transitioning}>
                 <X className="h-3.5 w-3.5 mr-1" />
                 Cancelar
+              </Button>
+            )}
+            {nextStatuses.includes('pendiente') && (
+              <Button size="sm" variant="outline" className="w-full sm:w-auto border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                onClick={() => transition('pendiente')} disabled={transitioning}>
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                Reabrir
+              </Button>
+            )}
+            {(ticket.status === 'asignado' || ticket.status === 'en_proceso') && (
+              <Button size="sm" variant="outline" className="w-full sm:w-auto"
+                onClick={() => setShowReassign(true)} disabled={transitioning}>
+                <UserCheck className="h-3.5 w-3.5 mr-1" />
+                Reasignar técnico
               </Button>
             )}
           </div>
@@ -319,6 +355,45 @@ export function AdminMaintenanceDetail({
         </Card>
       )}
 
+      {/* Reassign panel */}
+      {showReassign && (
+        <Card className="border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/30 dark:bg-indigo-950/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-indigo-700 dark:text-indigo-400">Reasignar técnico</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Técnico</Label>
+              <Select value={tecnicoId} onValueChange={(v) => v && setTecnicoId(v)}>
+                <SelectTrigger><SelectValue placeholder="Selecciona técnico">
+                  {tecnicoId ? (technicians.find((t) => t.id === tecnicoId)?.full_name ?? technicians.find((t) => t.id === tecnicoId)?.email) : undefined}
+                </SelectValue></SelectTrigger>
+                <SelectContent>
+                  {technicians.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.full_name ?? t.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Comentario (opcional)</Label>
+              <Textarea
+                value={reassignComment}
+                onChange={(e) => setReassignComment(e.target.value)}
+                rows={2}
+                placeholder="Motivo de reasignación…"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleReassign} disabled={reassigning}>
+                {reassigning ? 'Guardando…' : 'Confirmar reasignación'}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowReassign(false)}>Cancelar</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
@@ -349,33 +424,8 @@ export function AdminMaintenanceDetail({
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Documentos y evidencias</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              {pdfSistema ? (
-                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-                  <FileText className="h-4 w-4 text-red-500 flex-shrink-0" />
-                  <span className="text-sm flex-1 truncate text-zinc-700 dark:text-zinc-300">{pdfSistema.file_name}</span>
-                  <span className="text-xs text-zinc-400 mr-1">PDF Sistema</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs"
-                    disabled={generatingPdf}
-                    onClick={handleGeneratePdf}
-                  >
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                    Regenerar
-                  </Button>
-                  <a
-                    href={`${storageUrl(pdfSistema.file_path)}?v=${pdfVersion}`}
-                    download={pdfSistema.file_name}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium hover:opacity-80 transition-opacity"
-                  >
-                    <Download className="h-3 w-3" />
-                    Descargar
-                  </a>
-                </div>
-              ) : (
+              {/* Botón generar PDF: solo si hay técnico y aún no se generó */}
+              {canGeneratePdf && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -387,6 +437,45 @@ export function AdminMaintenanceDetail({
                   {generatingPdf ? 'Generando PDF…' : 'Generar PDF'}
                 </Button>
               )}
+
+              {/* PDF generado (plantilla) */}
+              {pdfSistema && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+                  <FileText className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <span className="text-sm flex-1 truncate text-zinc-700 dark:text-zinc-300">{pdfSistema.file_name}</span>
+                  <span className="text-xs text-zinc-400 mr-1">PDF</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    disabled={generatingPdf}
+                    onClick={handleGeneratePdf}
+                  >
+                    <RefreshCw className={`h-3 w-3 mr-1 ${generatingPdf ? 'animate-spin' : ''}`} />
+                    Regenerar
+                  </Button>
+                  {needsPdfRegen ? (
+                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-zinc-300 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 text-xs font-medium cursor-not-allowed"
+                      title="Regenera el PDF antes de descargar">
+                      <Download className="h-3 w-3" />
+                      Descargar
+                    </span>
+                  ) : (
+                    <a
+                      href={`${storageUrl(pdfSistema.file_path)}?t=${pdfCacheBust}`}
+                      download={pdfSistema.file_name}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium hover:opacity-80 transition-opacity"
+                    >
+                      <Download className="h-3 w-3" />
+                      Descargar
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* Evidencias (PDFs llenados / fotos) */}
               {otherEvid.map((ev) => (
                 <a key={ev.id} href={storageUrl(ev.file_path)} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
@@ -395,30 +484,33 @@ export function AdminMaintenanceDetail({
                   <span className="text-xs text-zinc-400">{formatDate(ev.created_at)}</span>
                 </a>
               ))}
-              {!pdfSistema && !otherEvid.length && (
+
+              {!canGeneratePdf && !pdfSistema && !otherEvid.length && (
                 <p className="text-xs text-zinc-400">Sin documentos.</p>
               )}
 
-              {/* Upload */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleUpload(e.target.files)}
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-3.5 w-3.5 mr-1.5" />
-                  {uploading ? 'Subiendo…' : 'Subir evidencia / PDF llenado'}
-                </Button>
-              </div>
+              {/* Subir evidencia: solo disponible después de que exista el PDF */}
+              {pdfSistema && (
+                <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    className="hidden"
+                    onChange={(e) => handleUpload(e.target.files)}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                    {uploading ? 'Subiendo…' : 'Subir PDF llenado'}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

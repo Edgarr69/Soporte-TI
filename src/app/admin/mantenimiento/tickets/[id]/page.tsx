@@ -71,7 +71,6 @@ export default async function AdminMaintenanceTicketDetailPage({
       comments={comments ?? []}
       evidencias={evidencias ?? []}
       technicians={(technicians ?? []) as { id: string; full_name: string | null; email: string }[]}
-      currentAdminId={user.id}
       supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}
     />
   )
