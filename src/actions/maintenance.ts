@@ -277,8 +277,10 @@ export async function changeMaintenanceStatus(
   const { data: adminNotifM } = await supabase
     .from('profiles').select('full_name, email').eq('id', user.id).single()
   const adminNotifNameM = adminNotifM?.full_name ?? adminNotifM?.email ?? 'El administrador'
+  const wasReopened = newStatus === 'pendiente' &&
+    (ticket.status === 'terminado' || ticket.status === 'cancelado')
   const maintVerbsNotif: Record<MaintenanceStatus, string> = {
-    pendiente:   'actualizó tu solicitud a pendiente',
+    pendiente:   wasReopened ? 'reabrió tu solicitud' : 'actualizó tu solicitud a pendiente',
     en_revision: 'puso tu solicitud en revisión',
     asignado:    'asignó tu solicitud a un técnico',
     en_proceso:  'puso tu solicitud en proceso',
@@ -302,6 +304,7 @@ export async function changeMaintenanceStatus(
     : newStatus === 'asignado' ? 'maintenance_assigned'
     : 'maintenance_status_changed'
   const maintTitles: Record<string, string> = {
+    pendiente:   wasReopened ? 'Solicitud reabierta' : 'Solicitud actualizada',
     terminado:   'Solicitud terminada',
     cancelado:   'Solicitud cancelada',
     asignado:    'Solicitud asignada',
@@ -309,6 +312,7 @@ export async function changeMaintenanceStatus(
     en_revision: 'Solicitud en revisión',
   }
   const maintVerbs: Record<string, string> = {
+    pendiente:   wasReopened ? 'reabrió' : 'regresó a pendiente',
     terminado:   'marcó como terminada',
     cancelado:   'canceló',
     asignado:    'asignó',
@@ -529,7 +533,9 @@ export async function regeneratePdf(ticketId: string) {
 
     if (storageErr) return { error: `Error subiendo PDF: ${storageErr.message}` }
 
-    await supabase.from('maintenance_tickets').update({ pdf_path: pdfPath }).eq('id', ticketId)
+    await supabase.from('maintenance_tickets')
+      .update({ pdf_path: pdfPath, tecnico_reassigned_at: null })
+      .eq('id', ticketId)
 
     const { data: existing } = await serviceClient
       .from('maintenance_evidencias')
@@ -578,7 +584,11 @@ export async function reassignTecnico(
 
   const { error: updateErr } = await supabase
     .from('maintenance_tickets')
-    .update({ tecnico_id: tecnicoId, tecnico_nombre_snapshot: tecnicoNombreSnapshot })
+    .update({
+      tecnico_id: tecnicoId,
+      tecnico_nombre_snapshot: tecnicoNombreSnapshot,
+      tecnico_reassigned_at: new Date().toISOString(),
+    })
     .eq('id', ticketId)
 
   if (updateErr) return { error: updateErr.message }
@@ -587,7 +597,7 @@ export async function reassignTecnico(
     await supabase.from('maintenance_comments').insert({
       ticket_id:   ticketId,
       author_id:   user.id,
-      content:     comment.trim(),
+      body:        comment.trim(),
       is_internal: true,
     })
   }

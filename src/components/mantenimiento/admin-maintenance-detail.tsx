@@ -69,6 +69,7 @@ interface TicketData {
   cancel_reason: string | null
   created_at: string
   updated_at: string
+  tecnico_reassigned_at?: string | null
   category: { name: string } | null
   user: { full_name: string | null; email: string } | null
 }
@@ -93,20 +94,20 @@ export function AdminMaintenanceDetail({
   const [transitioning, setTrans]     = useState(false)
 
   // Assign panel state
-  const [showAssign, setShowAssign]   = useState(false)
-  const [tecnicoId,  setTecnicoId]    = useState(ticket.tecnico_id ?? '')
-  const [fechaTermino, setFechaTermino] = useState(ticket.fecha_termino_estimada ?? '')
-  const [assignComment, setAssignComment] = useState('')
+  const [showAssign, setShowAssign]           = useState(false)
+  const [assignTecnicoId,  setAssignTecnicoId] = useState('')
+  const [fechaTermino, setFechaTermino]        = useState(ticket.fecha_termino_estimada ?? '')
+  const [assignComment, setAssignComment]      = useState('')
 
   // Cancel panel
   const [showCancel,    setShowCancel]    = useState(false)
   const [cancelReason,  setCancelReason]  = useState('')
 
   // Reassign panel
-  const [showReassign,     setShowReassign]     = useState(false)
-  const [reassignComment,  setReassignComment]  = useState('')
-  const [reassigning,      setReassigning]      = useState(false)
-  const [needsPdfRegen,    setNeedsPdfRegen]    = useState(false)
+  const [showReassign,       setShowReassign]       = useState(false)
+  const [reassignTecnicoId,  setReassignTecnicoId]  = useState(ticket.tecnico_id ?? '')
+  const [reassignComment,    setReassignComment]    = useState('')
+  const [reassigning,        setReassigning]        = useState(false)
 
   // Upload evidencia
   const [uploading,      setUploading]      = useState(false)
@@ -150,22 +151,20 @@ export function AdminMaintenanceDetail({
     setGeneratingPdf(false)
     if (r.error) { toast.error(r.error); return }
     setPdfCacheBust(Date.now())
-    setNeedsPdfRegen(false)
     toast.success('PDF generado correctamente')
     router.refresh()
   }
 
   async function handleReassign() {
-    if (!tecnicoId) { toast.error('Selecciona un técnico'); return }
+    if (!reassignTecnicoId) { toast.error('Selecciona un técnico'); return }
     setReassigning(true)
-    const tech = technicians.find((t) => t.id === tecnicoId)
-    const nombre = tech ? (tech.full_name ?? tech.email) : tecnicoId
-    const r = await reassignTecnico(ticket.id, tecnicoId, nombre, reassignComment || undefined)
+    const tech = technicians.find((t) => t.id === reassignTecnicoId)
+    const nombre = tech ? (tech.full_name ?? tech.email) : reassignTecnicoId
+    const r = await reassignTecnico(ticket.id, reassignTecnicoId, nombre, reassignComment || undefined)
     setReassigning(false)
     if (r.error) { toast.error(r.error); return }
     setShowReassign(false)
     setReassignComment('')
-    setNeedsPdfRegen(true)
     toast.success('Técnico reasignado — regenera el PDF para actualizarlo')
     router.refresh()
   }
@@ -186,6 +185,10 @@ export function AdminMaintenanceDetail({
   const pdfSistema     = evidencias.find((e) => e.type === 'pdf_sistema') ?? null
   const otherEvid      = evidencias.filter((e) => e.type === 'evidencia')
   const canGeneratePdf = !!ticket.tecnico_id && !pdfSistema
+  const needsPdfRegen  = !!(
+    ticket.tecnico_reassigned_at && pdfSistema &&
+    ticket.tecnico_reassigned_at > pdfSistema.created_at
+  )
 
   return (
     <div className="space-y-6">
@@ -274,18 +277,22 @@ export function AdminMaintenanceDetail({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Técnico</Label>
-                <Select value={tecnicoId} onValueChange={(v) => v && setTecnicoId(v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona técnico">
-                    {tecnicoId ? (technicians.find((t) => t.id === tecnicoId)?.full_name ?? technicians.find((t) => t.id === tecnicoId)?.email) : undefined}
-                  </SelectValue></SelectTrigger>
-                  <SelectContent>
-                    {technicians.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.full_name ?? t.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {technicians.length === 0 ? (
+                  <p className="text-xs text-zinc-400">No hay técnicos disponibles registrados.</p>
+                ) : (
+                  <Select value={assignTecnicoId} onValueChange={(v) => v && setAssignTecnicoId(v)}>
+                    <SelectTrigger><SelectValue placeholder="Selecciona técnico">
+                      {assignTecnicoId ? (technicians.find((t) => t.id === assignTecnicoId)?.full_name ?? technicians.find((t) => t.id === assignTecnicoId)?.email) : undefined}
+                    </SelectValue></SelectTrigger>
+                    <SelectContent>
+                      {technicians.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.full_name ?? t.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Fecha término estimada</Label>
@@ -314,9 +321,9 @@ export function AdminMaintenanceDetail({
                     toast.error('La fecha de término no puede ser anterior a la fecha de solicitud.')
                     return
                   }
-                  const tech = technicians.find((t) => t.id === tecnicoId)
+                  const tech = technicians.find((t) => t.id === assignTecnicoId)
                   transition('asignado', {
-                    tecnico_id:              tecnicoId || undefined,
+                    tecnico_id:              assignTecnicoId || undefined,
                     tecnico_nombre_snapshot: tech ? (tech.full_name ?? tech.email) : undefined,
                     fecha_termino_estimada:  fechaTermino || undefined,
                     comment:                 assignComment || undefined,
@@ -326,7 +333,7 @@ export function AdminMaintenanceDetail({
               >
                 {transitioning ? 'Guardando…' : 'Confirmar asignación'}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setShowAssign(false)}>Cancelar</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setShowAssign(false); setAssignTecnicoId('') }}>Cancelar</Button>
             </div>
           </CardContent>
         </Card>
@@ -364,9 +371,9 @@ export function AdminMaintenanceDetail({
           <CardContent className="space-y-3">
             <div className="space-y-1.5">
               <Label>Técnico</Label>
-              <Select value={tecnicoId} onValueChange={(v) => v && setTecnicoId(v)}>
+              <Select value={reassignTecnicoId} onValueChange={(v) => v && setReassignTecnicoId(v)}>
                 <SelectTrigger><SelectValue placeholder="Selecciona técnico">
-                  {tecnicoId ? (technicians.find((t) => t.id === tecnicoId)?.full_name ?? technicians.find((t) => t.id === tecnicoId)?.email) : undefined}
+                  {reassignTecnicoId ? (technicians.find((t) => t.id === reassignTecnicoId)?.full_name ?? technicians.find((t) => t.id === reassignTecnicoId)?.email) : undefined}
                 </SelectValue></SelectTrigger>
                 <SelectContent>
                   {technicians.map((t) => (
@@ -388,7 +395,7 @@ export function AdminMaintenanceDetail({
               <Button size="sm" onClick={handleReassign} disabled={reassigning}>
                 {reassigning ? 'Guardando…' : 'Confirmar reasignación'}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setShowReassign(false)}>Cancelar</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setShowReassign(false); setReassignTecnicoId(ticket.tecnico_id ?? '') }}>Cancelar</Button>
             </div>
           </CardContent>
         </Card>

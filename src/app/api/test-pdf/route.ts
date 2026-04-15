@@ -33,7 +33,7 @@ export async function GET() {
 
   const buffer = await renderToBuffer(pdfElement)
 
-  return new NextResponse(buffer, {
+  return new NextResponse(buffer.buffer as ArrayBuffer, {
     headers: {
       'Content-Type':        'application/pdf',
       'Content-Disposition': 'attachment; filename="muestra-mantenimiento.pdf"',
