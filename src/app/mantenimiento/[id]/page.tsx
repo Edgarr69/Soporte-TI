@@ -53,15 +53,21 @@ export default async function MantenimientoDetailPage({
         .order('created_at', { ascending: true }),
     ])
 
+  const history = statusHistory ?? []
+  const lastEntry = history[history.length - 1]
+  const isReopened = ticket.status === 'pendiente' &&
+    (lastEntry?.from_status === 'terminado' || lastEntry?.from_status === 'cancelado')
+
   return (
     <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
       <MaintenanceDetail
         ticket={ticket}
-        statusHistory={statusHistory ?? []}
+        statusHistory={history}
         comments={comments ?? []}
         evidencias={evidencias ?? []}
         currentUserId={user.id}
         supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}
+        isReopened={isReopened}
       />
     </main>
   )

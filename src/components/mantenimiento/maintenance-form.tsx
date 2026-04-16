@@ -41,7 +41,6 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
   const [servicio,  setServicio]  = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [fechaSolicitud,   setFechaSolicitud]   = useState(todayISO())
-  const [fechaTermino,     setFechaTermino]     = useState('')
   const [photoFile,    setPhotoFile]    = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -73,11 +72,6 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
       toast.error('La fecha de solicitud no puede ser anterior a hoy.')
       return
     }
-    if (fechaTermino && fechaTermino < fechaSolicitud) {
-      toast.error('La fecha de término no puede ser anterior a la fecha de solicitud.')
-      return
-    }
-
     setLoading(true)
     const fd = new FormData()
     fd.set('type',                     tipo)
@@ -90,7 +84,6 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
     fd.set('servicio',                 servicio.trim())
     fd.set('descripcion',              descripcion.trim())
     fd.set('fecha_solicitud',          fechaSolicitud)
-    fd.set('fecha_termino_estimada',   fechaTermino)
     if (photoFile) fd.set('photo', photoFile)
 
     const result = await createMaintenanceTicket(fd)
@@ -194,17 +187,6 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
                 onChange={(e) => setFechaSolicitud(e.target.value)}
                 disabled={loading}
                 required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="fechaTermino">Fecha de término estimada</Label>
-              <Input
-                id="fechaTermino"
-                type="date"
-                value={fechaTermino}
-                min={fechaSolicitud}
-                onChange={(e) => setFechaTermino(e.target.value)}
-                disabled={loading}
               />
             </div>
           </div>

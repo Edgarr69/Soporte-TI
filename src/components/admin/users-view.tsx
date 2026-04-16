@@ -25,9 +25,10 @@ interface UserRow {
 }
 
 interface Props {
-  users:       UserRow[]
-  departments: { id: string; name: string }[]
-  currentRole: string
+  users:         UserRow[]
+  departments:   { id: string; name: string }[]
+  currentRole:   string
+  currentUserId: string
 }
 
 const ROLE_OPTIONS: Role[] = [
@@ -42,7 +43,7 @@ const ROLE_COLORS: Record<string, string> = {
   tecnico_mantenimiento:  'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
 }
 
-export function UsersView({ users, departments, currentRole }: Props) {
+export function UsersView({ users, departments, currentRole, currentUserId }: Props) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
 
@@ -73,6 +74,7 @@ export function UsersView({ users, departments, currentRole }: Props) {
       {showForm && (
         <CreateUserForm
           departments={departments}
+          currentRole={currentRole}
           onCreated={() => { setShowForm(false); router.refresh() }}
           onCancel={() => setShowForm(false)}
         />
@@ -84,6 +86,8 @@ export function UsersView({ users, departments, currentRole }: Props) {
             key={u.id}
             user={u}
             isSuperAdmin={currentRole === 'super_admin'}
+            isMantAdmin={currentRole === 'admin_mantenimiento'}
+            isOwnRow={u.id === currentUserId}
             onRoleChange={handleRoleChange}
           />
         ))}
@@ -95,23 +99,36 @@ export function UsersView({ users, departments, currentRole }: Props) {
 // ─── Fila de usuario ──────────────────────────────────────
 
 function UserRow({
-  user, isSuperAdmin, onRoleChange,
+  user, isSuperAdmin, isMantAdmin, isOwnRow, onRoleChange,
 }: {
-  user: UserRow
+  user:         UserRow
   isSuperAdmin: boolean
+  isMantAdmin:  boolean
+  isOwnRow:     boolean
   onRoleChange: (userId: string, newRole: Role) => Promise<boolean>
 }) {
-  const [editRole,     setEditRole]     = useState(false)
-  const [newRole,      setNewRole]      = useState(user.role as Role)
-  const [displayRole,  setDisplayRole]  = useState(user.role as Role)
-  const [saving,       setSaving]       = useState(false)
+  const [editRole,    setEditRole]    = useState(false)
+  const [displayRole, setDisplayRole] = useState(user.role as Role)
+  const [saving,      setSaving]      = useState(false)
+
+  // admin_mantenimiento puede alternar entre usuario ↔ tecnico_mantenimiento
+  const roleOptions: Role[] = isSuperAdmin
+    ? ROLE_OPTIONS
+    : ['usuario', 'tecnico_mantenimiento']
+
+  const [newRole, setNewRole] = useState<Role>(user.role as Role)
+
+  // No puede cambiar su propio rol; admin_mantenimiento no puede tocar a admin_sistemas
+  const targetIsAdminSistemas = user.role === 'admin_sistemas'
+  const canEditRole = !isOwnRow
+    && (isSuperAdmin || (isMantAdmin && !targetIsAdminSistemas))
 
   async function saveRole() {
     setSaving(true)
     const ok = await onRoleChange(user.id, newRole)
     setSaving(false)
     if (ok) {
-      setDisplayRole(newRole) // actualiza badge inmediatamente sin esperar refresh
+      setDisplayRole(newRole)
       setEditRole(false)
     }
   }
@@ -139,16 +156,16 @@ function UserRow({
             </p>
           </div>
 
-          {isSuperAdmin && (
+          {canEditRole && (
             <div className="flex items-center gap-2 flex-wrap">
               {editRole ? (
                 <>
                   <Select value={newRole} onValueChange={(v) => v && setNewRole(v as Role)}>
-                    <SelectTrigger className="h-7 text-xs w-44">
+                    <SelectTrigger className="h-7 text-xs w-52">
                       <SelectValue>{ROLE_LABELS[newRole]}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {ROLE_OPTIONS.map((r) => (
+                      {roleOptions.map((r) => (
                         <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
                       ))}
                     </SelectContent>
@@ -177,12 +194,17 @@ function UserRow({
 // ─── Formulario crear usuario ─────────────────────────────
 
 function CreateUserForm({
-  departments, onCreated, onCancel,
+  departments, currentRole, onCreated, onCancel,
 }: {
   departments: { id: string; name: string }[]
+  currentRole: string
   onCreated:   () => void
   onCancel:    () => void
 }) {
+  const canPickRole      = currentRole === 'super_admin' || currentRole === 'admin_mantenimiento'
+  const createRoleOptions: Role[] = currentRole === 'super_admin'
+    ? ROLE_OPTIONS
+    : ['usuario', 'tecnico_mantenimiento']
   const [email,      setEmail]      = useState('')
   const [password,   setPassword]   = useState('')
   const [fullName,   setFullName]   = useState('')
@@ -229,17 +251,19 @@ function CreateUserForm({
               <Label htmlFor="fullName">Nombre completo</Label>
               <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={submitting} />
             </div>
-            <div className="space-y-1.5">
-              <Label>Rol</Label>
-              <Select value={role} onValueChange={(v) => v && setRole(v as Role)} disabled={submitting}>
-                <SelectTrigger><SelectValue>{ROLE_LABELS[role]}</SelectValue></SelectTrigger>
-                <SelectContent>
-                  {ROLE_OPTIONS.map((r) => (
-                    <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {canPickRole && (
+              <div className="space-y-1.5">
+                <Label>Rol</Label>
+                <Select value={role} onValueChange={(v) => v && setRole(v as Role)} disabled={submitting}>
+                  <SelectTrigger><SelectValue>{ROLE_LABELS[role]}</SelectValue></SelectTrigger>
+                  <SelectContent>
+                    {createRoleOptions.map((r) => (
+                      <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <p className="text-xs text-zinc-400">

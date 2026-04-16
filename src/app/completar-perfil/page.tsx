@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CompleteProfileForm } from '@/components/auth/complete-profile-form'
 import { Headphones } from 'lucide-react'
+import { homePathForRole, type Role } from '@/lib/types'
 
 export default async function CompleteProfilePage() {
   const supabase = await createClient()
@@ -12,11 +13,11 @@ export default async function CompleteProfilePage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('first_login_completed, full_name, department_id, encargado_nombre')
+    .select('role, first_login_completed, full_name, department_id, encargado_nombre')
     .eq('id', user.id)
     .single()
 
-  if (profile?.first_login_completed) redirect('/dashboard')
+  if (profile?.first_login_completed) redirect(homePathForRole(profile.role as Role))
 
   const { data: departments } = await supabase
     .from('departments').select('id, name').order('name')

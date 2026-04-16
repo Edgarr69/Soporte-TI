@@ -57,6 +57,7 @@ interface TicketData {
   folio: string
   type: MaintenanceType
   status: MaintenanceStatus
+  prioridad?: 'baja' | 'normal' | 'alta'
   servicio: string
   descripcion: string
   encargado_nombre: string
@@ -81,10 +82,11 @@ interface Props {
   evidencias: Evidencia[]
   technicians: Technician[]
   supabaseUrl: string
+  isReopened?: boolean
 }
 
 export function AdminMaintenanceDetail({
-  ticket, statusHistory, comments, evidencias, technicians, supabaseUrl,
+  ticket, statusHistory, comments, evidencias, technicians, supabaseUrl, isReopened = false,
 }: Props) {
   const router = useRouter()
 
@@ -194,13 +196,13 @@ export function AdminMaintenanceDetail({
 
   const pdfSistema     = evidencias.find((e) => e.type === 'pdf_sistema') ?? null
   const otherEvid      = evidencias.filter((e) => e.type === 'evidencia')
-  const canGeneratePdf = !!ticket.tecnico_id && !pdfSistema
+  const canGeneratePdf = !!ticket.tecnico_id && !pdfSistema && ticket.status !== 'terminado'
   const needsPdfRegen  = !!(
     ticket.tecnico_reassigned_at && pdfSistema &&
     ticket.tecnico_reassigned_at > pdfSistema.created_at
   )
-  // Reabierto: bloquear regenerar, descargar y subir hasta que se apruebe y asigne técnico
-  const pdfBlockedByReopen = ['pendiente', 'en_revision'].includes(ticket.status) && !!pdfSistema
+  // Bloquear PDF cuando: reabierto (pendiente/en_revision) o ticket ya terminado
+  const pdfBlockedByReopen = ['pendiente', 'en_revision', 'terminado'].includes(ticket.status) && !!pdfSistema
 
   return (
     <div className="space-y-6">
@@ -214,12 +216,23 @@ export function AdminMaintenanceDetail({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-mono text-zinc-400">{ticket.folio}</span>
-              <Badge className={cn('text-xs', MAINTENANCE_STATUS_COLORS[ticket.status])}>
-                {MAINTENANCE_STATUS_LABELS[ticket.status]}
-              </Badge>
+              {isReopened ? (
+                <Badge className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
+                  Reabierto
+                </Badge>
+              ) : (
+                <Badge className={cn('text-xs', MAINTENANCE_STATUS_COLORS[ticket.status])}>
+                  {MAINTENANCE_STATUS_LABELS[ticket.status]}
+                </Badge>
+              )}
               <Badge variant="outline" className="text-xs">
                 {MAINTENANCE_TYPE_LABELS[ticket.type]}
               </Badge>
+              {ticket.prioridad === 'alta' && (
+                <Badge className="text-xs bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                  Alta prioridad
+                </Badge>
+              )}
             </div>
             <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mt-1">{ticket.servicio}</h1>
             <p className="text-sm text-zinc-500">

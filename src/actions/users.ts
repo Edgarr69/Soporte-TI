@@ -92,7 +92,28 @@ export async function updateUserRole(targetUserId: string, newRole: Role) {
 
   const { data: adminProfile } = await supabase
     .from('profiles').select('role').eq('id', user.id).single()
-  if (adminProfile?.role !== 'super_admin') return { error: 'Solo super_admin puede cambiar roles' }
+
+  const isSuperAdmin = adminProfile?.role === 'super_admin'
+  const isMantAdmin  = adminProfile?.role === 'admin_mantenimiento'
+
+  if (!isSuperAdmin && !isMantAdmin)
+    return { error: 'Sin permiso para cambiar roles' }
+
+  // Nadie puede cambiar su propio rol
+  if (targetUserId === user.id)
+    return { error: 'No puedes cambiar tu propio rol' }
+
+  if (isMantAdmin) {
+    // Verificar que el target no sea admin_sistemas
+    const { data: targetProfile } = await supabase
+      .from('profiles').select('role').eq('id', targetUserId).single()
+    if (targetProfile?.role === 'admin_sistemas')
+      return { error: 'No puedes cambiar el rol de un administrador de sistemas' }
+
+    const mantAllowedRoles: Role[] = ['usuario', 'tecnico_mantenimiento']
+    if (!mantAllowedRoles.includes(newRole))
+      return { error: 'Solo puedes asignar Usuario o Técnico de Mantenimiento' }
+  }
 
   // Usar service role para saltarse RLS en profiles
   const serviceUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''

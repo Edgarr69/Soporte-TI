@@ -59,7 +59,6 @@ interface Props {
     area_name_snapshot: string | null
     tecnico_nombre_snapshot: string | null
     fecha_solicitud: string
-    fecha_termino_estimada: string | null
     cancel_reason: string | null
     created_at: string
     updated_at: string
@@ -70,10 +69,11 @@ interface Props {
   evidencias: Evidencia[]
   currentUserId: string
   supabaseUrl: string
+  isReopened?: boolean
 }
 
 export function MaintenanceDetail({
-  ticket, statusHistory, comments, evidencias, currentUserId, supabaseUrl,
+  ticket, statusHistory, comments, evidencias, currentUserId, supabaseUrl, isReopened = false,
 }: Props) {
   const router = useRouter()
   const [commentBody, setCommentBody]   = useState('')
@@ -137,9 +137,15 @@ export function MaintenanceDetail({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-mono text-zinc-400">{ticket.folio}</span>
-              <Badge className={cn('text-xs', MAINTENANCE_STATUS_COLORS[ticket.status])}>
-                {MAINTENANCE_STATUS_LABELS[ticket.status]}
-              </Badge>
+              {isReopened ? (
+                <Badge className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
+                  Reabierto
+                </Badge>
+              ) : (
+                <Badge className={cn('text-xs', MAINTENANCE_STATUS_COLORS[ticket.status])}>
+                  {MAINTENANCE_STATUS_LABELS[ticket.status]}
+                </Badge>
+              )}
             </div>
             <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mt-1">
               {ticket.servicio}
@@ -214,7 +220,6 @@ export function MaintenanceDetail({
               <Row label="Área"          value={ticket.area_name_snapshot ?? '—'} />
               <Row label="Encargado"     value={ticket.encargado_nombre} />
               <Row label="Fecha solicitud" value={formatDate(ticket.fecha_solicitud)} />
-              <Row label="Término estimado" value={ticket.fecha_termino_estimada ? formatDate(ticket.fecha_termino_estimada) : '—'} />
               {ticket.tecnico_nombre_snapshot && (
                 <Row label="Técnico asignado" value={ticket.tecnico_nombre_snapshot} />
               )}

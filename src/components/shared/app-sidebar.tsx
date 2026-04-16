@@ -53,6 +53,7 @@ const MANTENIMIENTO_ITEMS: NavItem[] = [
   { href: '/admin/mantenimiento/tickets',    icon: Wrench,          label: 'Solicitudes' },
   { href: '/admin/mantenimiento/tecnicos',   icon: HardHat,         label: 'Técnicos'    },
   { href: '/admin/mantenimiento/catalogos',  icon: Settings,        label: 'Catálogos'   },
+  { href: '/admin/usuarios',                 icon: Users,           label: 'Usuarios'    },
   { href: '/admin/historial',                icon: History,         label: 'Historial', badge: true },
 ]
 
@@ -68,7 +69,7 @@ const SUPER_ITEMS: NavItem[] = [
 const USUARIO_ITEMS: NavItem[] = [
   { href: '/dashboard',      icon: LayoutDashboard, label: 'Inicio'         },
   { href: '/mis-tickets',    icon: Ticket,          label: 'Mis Tickets'    },
-  { href: '/notificaciones', icon: Bell,            label: 'Notificaciones' },
+  { href: '/notificaciones', icon: Bell,            label: 'Notificaciones', badge: true },
 ]
 
 const TECNICO_ITEMS: NavItem[] = [
@@ -83,6 +84,17 @@ function itemsForRole(role: Role): NavItem[] {
   if (role === 'usuario')               return USUARIO_ITEMS
   if (role === 'tecnico_mantenimiento') return TECNICO_ITEMS
   return []
+}
+
+function isNavActive(href: string, pathname: string): boolean {
+  if (href === '/admin') return pathname === href
+  if (href === '/mis-tickets') {
+    return pathname === '/mis-tickets'
+        || pathname === '/tickets'
+        || pathname.startsWith('/tickets/')
+        || pathname.startsWith('/mantenimiento/')
+  }
+  return pathname === href || pathname.startsWith(href + '/')
 }
 
 interface Props {
@@ -107,16 +119,6 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
     svgControls.start(isOpen ? 'open' : 'close')
   }, [isOpen, containerControls, svgControls])
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (toggleBlockRef.current) { toggleBlockRef.current = false; return }
-      if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    window.addEventListener('click', handler)
-    return () => window.removeEventListener('click', handler)
-  }, [])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -176,12 +178,12 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
                 <User
                   as="button"
                   name={
-                    <span className="text-xs font-semibold truncate block max-w-[100px]">
+                    <span className="text-xs font-semibold truncate block max-w-[148px]">
                       {profile.full_name ?? 'Usuario'}
                     </span>
                   }
                   description={
-                    <span className="text-[10px] truncate block max-w-[110px]">
+                    <span className="text-[10px] truncate block max-w-[148px]">
                       {profile.email}
                     </span>
                   }
@@ -193,7 +195,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
                       name: 'text-white dark:text-zinc-900 text-xs font-bold',
                     },
                   }}
-                  classNames={{ wrapper: 'min-w-0 max-w-[120px]' }}
+                  classNames={{ wrapper: 'min-w-0 max-w-[148px]' }}
                 />
               </PopoverTrigger>
               <PopoverContent className="p-4 w-[240px] bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-700">
@@ -225,7 +227,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
         </div>
 
         {/* Animated arrow */}
-        <Tooltip placement="right" content="Abrir">
+        <Tooltip placement="right" content={isOpen ? 'Cerrar' : 'Abrir'}>
           <button
             className="p-1 rounded-full flex-shrink-0"
             onClick={() => setIsOpen((v) => !v)}
@@ -254,14 +256,13 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
       {/* ─── Nav items ─── */}
       <div className="flex flex-col flex-grow basis-0 gap-1">
         {items.map(({ href, icon: Icon, label, badge }) => {
-          const active    = href === '/admin' ? pathname === href : pathname.startsWith(href)
+          const active = isNavActive(href, pathname)
           const hasUnread = badge && adminUnreadCount > 0
 
           return (
             <Link
               key={href}
               href={href}
-              onClick={() => setIsOpen(false)}
               className={`overflow-hidden whitespace-nowrap tracking-wide flex gap-3 items-center
                 cursor-pointer rounded-lg py-2 transition-colors
                 ${isOpen ? 'px-2' : 'justify-center px-0'}

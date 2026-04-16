@@ -64,14 +64,20 @@ export default async function AdminMaintenanceTicketDetailPage({
       .order('full_name'),
   ])
 
+  const history = statusHistory ?? []
+  const lastEntry = history[history.length - 1]
+  const isReopened = ticket.status === 'pendiente' &&
+    (lastEntry?.from_status === 'terminado' || lastEntry?.from_status === 'cancelado')
+
   return (
     <AdminMaintenanceDetail
       ticket={ticket as unknown as Parameters<typeof AdminMaintenanceDetail>[0]['ticket']}
-      statusHistory={statusHistory ?? []}
+      statusHistory={history}
       comments={comments ?? []}
       evidencias={evidencias ?? []}
       technicians={(technicians ?? []) as { id: string; full_name: string | null; email: string }[]}
       supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}
+      isReopened={isReopened}
     />
   )
 }

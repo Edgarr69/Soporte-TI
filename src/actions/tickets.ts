@@ -13,18 +13,11 @@ export async function createTicket(data: NewTicketFormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('department_id')
-    .eq('id', user.id)
-    .single()
-
-  // obtener base_score de la subcategoría
-  const { data: subcat } = await supabase
-    .from('ticket_subcategories')
-    .select('base_score')
-    .eq('id', data.subcategory_id)
-    .single()
+  // Ambas queries son independientes — ejecutar en paralelo
+  const [{ data: profile }, { data: subcat }] = await Promise.all([
+    supabase.from('profiles').select('department_id').eq('id', user.id).single(),
+    supabase.from('ticket_subcategories').select('base_score').eq('id', data.subcategory_id).single(),
+  ])
 
   const { priority, score } = calculatePriority({
     blockingLevel:  data.blocking_level,
@@ -53,44 +46,41 @@ export async function createTicket(data: NewTicketFormData) {
 
   if (error) return { error: error.message }
 
-  // Notificación al usuario
+  // Un solo fetch del perfil — reutilizado en notificación de usuario y admin
   const { data: creatorProfile } = await supabase
     .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const creatorName = creatorProfile?.full_name ?? creatorProfile?.email ?? 'Tú'
-  const { error: notifErr } = await supabase.from('notifications').insert({
-    user_id:   user.id,
-    ticket_id: null,
-    type:      'ticket_created',
-    module:    'sistemas',
-    title:     'Ticket de sistemas creado',
-    body:      `${creatorName} ha creado un ticket de sistemas con prioridad ${priority}`,
-  })
+  const creatorName = creatorProfile?.full_name ?? creatorProfile?.email ?? 'Usuario'
+
+  // Notificación al usuario + historial + admin en paralelo
+  const [{ error: notifErr }] = await Promise.all([
+    supabase.from('notifications').insert({
+      user_id:   user.id,
+      ticket_id: null,
+      type:      'ticket_created',
+      module:    'sistemas',
+      title:     'Ticket de sistemas creado',
+      body:      `${creatorName} ha creado un ticket de sistemas con prioridad ${priority}`,
+    }),
+    supabase.from('ticket_status_history').insert({
+      ticket_id:    ticket.id,
+      changed_by:   user.id,
+      from_status:  null,
+      to_status:    'abierto',
+      comment:      'Ticket creado',
+    }),
+    createAdminNotification({
+      title:       'Nuevo ticket de sistemas',
+      message:     `${creatorName} ha creado el ticket ${ticket.folio}`,
+      type:        'ticket_created',
+      module:      'sistemas',
+      actorId:     user.id,
+      actorName:   creatorName,
+      targetId:    ticket.id,
+      targetType:  'ticket',
+      targetFolio: ticket.folio,
+    }),
+  ])
   if (notifErr) console.error('[createTicket] notification insert failed:', notifErr.message)
-
-  // Historial inicial
-  await supabase.from('ticket_status_history').insert({
-    ticket_id:    ticket.id,
-    changed_by:   user.id,
-    from_status:  null,
-    to_status:    'abierto',
-    comment:      'Ticket creado',
-  })
-
-  // Admin notification
-  const { data: actorProfile } = await supabase
-    .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const actorName = actorProfile?.full_name ?? actorProfile?.email ?? 'Usuario'
-  await createAdminNotification({
-    title:       'Nuevo ticket de sistemas',
-    message:     `${actorName} ha creado el ticket ${ticket.folio}`,
-    type:        'ticket_created',
-    module:      'sistemas',
-    actorId:     user.id,
-    actorName:   actorName,
-    targetId:    ticket.id,
-    targetType:  'ticket',
-    targetFolio: ticket.folio,
-  })
 
   revalidatePath('/tickets')
   revalidatePath('/dashboard')
@@ -173,10 +163,10 @@ export async function changeTicketStatus(
     comment:      comment ?? null,
   })
 
-  // Notificación al usuario dueño del ticket
-  const { data: adminProfileNotif } = await supabase
+  // Un solo fetch del perfil admin — reutilizado en ambas notificaciones
+  const { data: adminProfileData } = await supabase
     .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const adminNameNotif = adminProfileNotif?.full_name ?? adminProfileNotif?.email ?? 'El administrador'
+  const adminNameNotif = adminProfileData?.full_name ?? adminProfileData?.email ?? 'El administrador'
   const statusVerbsNotif: Record<string, string> = {
     cerrado:    'cerró tu ticket',
     reabierto:  'reabrió tu ticket',
@@ -194,10 +184,8 @@ export async function changeTicketStatus(
     body:      `${adminNameNotif} ${statusVerbNotif}${comment ? `: ${comment}` : ''}`,
   })
 
-  // Admin notification
-  const { data: adminProfile2 } = await supabase
-    .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const adminName2 = adminProfile2?.full_name ?? adminProfile2?.email ?? 'Admin'
+  // Admin notification (reutiliza adminProfileData ya obtenido)
+  const adminName2 = adminProfileData?.full_name ?? adminProfileData?.email ?? 'Admin'
   const adminNotifType = newStatus === 'cerrado' ? 'ticket_closed'
     : newStatus === 'reabierto' ? 'ticket_reopened'
     : 'ticket_status_changed'

@@ -31,6 +31,7 @@ export default async function MisTicketsLayout({ children }: { children: React.R
       <AppSidebar
         profile={profile as unknown as Profile}
         role={profile.role as Role}
+        adminUnreadCount={unreadCount ?? 0}
       />
       <div className="sm:ml-[4.5rem] flex flex-col min-h-screen">
         <TopBar

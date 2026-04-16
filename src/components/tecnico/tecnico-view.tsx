@@ -44,13 +44,25 @@ interface Props {
 }
 
 export function TecnicoView({ active, history, technicianName }: Props) {
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
+  const firstName = technicianName.split(' ')[0] || 'técnico'
+
   return (
-    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 pb-20 lg:pb-8">
-      <section>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-          Hola, {technicianName.split(' ')[0] || 'técnico'}
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-6 sm:py-8 space-y-8 sm:space-y-10 pb-20 lg:pb-8">
+      <section className="space-y-2 pt-2">
+        <p className="text-sm font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+          Técnico de mantenimiento
+        </p>
+        <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-50 leading-tight">
+          {greeting},<br />
+          <span className="text-zinc-500 dark:text-zinc-400">{firstName}.</span>
         </h1>
-        <p className="text-sm text-zinc-500 mt-1">Panel de técnico de mantenimiento</p>
+        <p className="text-base text-zinc-400 dark:text-zinc-500 pt-1">
+          {active.length === 0
+            ? 'No tienes asignaciones activas por ahora.'
+            : `Tienes ${active.length} asignación${active.length !== 1 ? 'es' : ''} activa${active.length !== 1 ? 's' : ''}.`}
+        </p>
       </section>
 
       {/* Active assignments */}

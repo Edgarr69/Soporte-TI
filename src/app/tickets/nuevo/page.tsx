@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { NewTicketForm } from '@/components/tickets/new-ticket-form'
 import { getCachedTicketCategories, getCachedTicketSubcategories } from '@/lib/catalog-cache'
+import { LinkButton } from '@/components/ui/link-button'
+import { ChevronLeft } from 'lucide-react'
 
 export default async function NewTicketPage() {
   const supabase = await createClient()
@@ -26,6 +28,10 @@ export default async function NewTicketPage() {
   return (
     <main className="mx-auto max-w-2xl px-4 sm:px-6 py-8">
         <div className="mb-6">
+          <LinkButton href="/dashboard" variant="ghost" size="sm" className="-ml-2 mb-2">
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Panel principal
+          </LinkButton>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
             Reportar problema
           </h1>

@@ -24,7 +24,7 @@ export default async function CatalogosPage() {
     supabase.from('areas').select('id, name, is_active, sort_order').order('sort_order'),
     supabase.from('maintenance_categories').select('id, name, type, is_active').eq('type', 'general').order('sort_order'),
     supabase.from('maintenance_categories').select('id, name, type, is_active').eq('type', 'maquinaria').order('sort_order'),
-    supabase.from('departments').select('id, name').order('name'),
+    supabase.from('departments').select('id, name, allowed_ticket_types').order('name'),
     supabase.from('department_managers').select('id, department_id, manager_name, is_default').eq('is_default', true),
   ])
 

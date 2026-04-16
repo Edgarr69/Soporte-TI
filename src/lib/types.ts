@@ -412,6 +412,7 @@ export interface MaintenanceTicket {
   finished_at: string | null
   cancelled_at: string | null
   cancel_reason: string | null
+  prioridad: 'baja' | 'normal' | 'alta'
   assignment_time_minutes: number | null
   resolution_time_minutes: number | null
   created_at: string

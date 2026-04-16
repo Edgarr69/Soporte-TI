@@ -16,12 +16,13 @@ const LOGO_PUBLIC_PATH = path.join(process.cwd(), 'public', 'logoo.png')
 
 function getLogoSrc(): string | null {
   try {
-    // Copia a public/ si no está — react-pdf resuelve imágenes via HTTP
-    if (!fs.existsSync(LOGO_PUBLIC_PATH) && fs.existsSync(LOGO_SRC_PATH)) {
-      fs.copyFileSync(LOGO_SRC_PATH, LOGO_PUBLIC_PATH)
-    }
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-    return `${appUrl}/logoo.png`
+    // Leer como base64 — más confiable que HTTP en react-pdf (no depende de NEXT_PUBLIC_APP_URL)
+    const logoPath = fs.existsSync(LOGO_PUBLIC_PATH) ? LOGO_PUBLIC_PATH
+                   : fs.existsSync(LOGO_SRC_PATH)    ? LOGO_SRC_PATH
+                   : null
+    if (!logoPath) return null
+    const buf = fs.readFileSync(logoPath)
+    return `data:image/png;base64,${buf.toString('base64')}`
   } catch (e) {
     console.error('[logo] ERROR:', e)
     return null
@@ -64,6 +65,15 @@ export async function createMaintenanceTicket(formData: FormData) {
   if (fecha_termino_estimada && fecha_termino_estimada < fecha_solicitud)
     return { error: 'La fecha de término no puede ser anterior a la fecha de solicitud.' }
 
+  // Validar que el departamento permita este tipo de ticket
+  const { data: dept } = await supabase
+    .from('departments')
+    .select('allowed_ticket_types')
+    .eq('id', department_id)
+    .single()
+  if (dept?.allowed_ticket_types && !dept.allowed_ticket_types.includes(type))
+    return { error: 'Tu departamento no está habilitado para crear este tipo de solicitud.' }
+
   // Generar folio atómico
   const module = type === 'general' ? 'general' : 'maquinaria'
   const { data: folioData, error: folioErr } = await supabase
@@ -95,6 +105,7 @@ export async function createMaintenanceTicket(formData: FormData) {
       fecha_solicitud,
       fecha_termino_estimada:   fecha_termino_estimada || null,
       status:                   'pendiente',
+      prioridad:                type === 'maquinaria' ? 'alta' : 'normal',
     })
     .select('id, folio, created_at')
     .single()
@@ -275,9 +286,9 @@ export async function changeMaintenanceStatus(
     terminado:   'Terminado',
     cancelado:   'Cancelado',
   }
-  const { data: adminNotifM } = await supabase
+  const { data: adminProfileNotif } = await supabase
     .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const adminNotifNameM = adminNotifM?.full_name ?? adminNotifM?.email ?? 'El administrador'
+  const adminNotifNameM = adminProfileNotif?.full_name ?? adminProfileNotif?.email ?? 'El administrador'
   const wasReopened = newStatus === 'pendiente' &&
     (ticket.status === 'terminado' || ticket.status === 'cancelado')
   const maintVerbsNotif: Record<MaintenanceStatus, string> = {
@@ -298,9 +309,7 @@ export async function changeMaintenanceStatus(
   })
 
   // Admin notification
-  const { data: adminProfileM } = await supabase
-    .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const adminNameM = adminProfileM?.full_name ?? adminProfileM?.email ?? 'Admin'
+  const adminNameM = adminProfileNotif?.full_name ?? adminProfileNotif?.email ?? 'Admin'
   const maintAdminType = newStatus === 'terminado' ? 'maintenance_closed'
     : newStatus === 'cancelado' ? 'maintenance_cancelled'
     : newStatus === 'asignado' ? 'maintenance_assigned'
@@ -361,6 +370,13 @@ export async function addMaintenanceComment(
     .eq('id', ticketId)
     .single()
   if (!ticket) return { error: 'No encontrado' }
+
+  // Solo admins pueden enviar comentarios internos
+  if (isInternal) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (!profile || !['admin_mantenimiento', 'super_admin'].includes(profile.role))
+      return { error: 'Sin permiso para comentarios internos' }
+  }
 
   const { error } = await supabase.from('maintenance_comments').insert({
     ticket_id:   ticketId,
@@ -507,10 +523,13 @@ export async function regeneratePdf(ticketId: string) {
 
   const { data: ticket } = await supabase
     .from('maintenance_tickets')
-    .select('folio, type, fecha_solicitud, fecha_termino_estimada, department_name_snapshot, area_name_snapshot, encargado_nombre, servicio, descripcion, tecnico_nombre_snapshot, created_at')
+    .select('folio, type, status, fecha_solicitud, fecha_termino_estimada, department_name_snapshot, area_name_snapshot, encargado_nombre, servicio, descripcion, tecnico_nombre_snapshot, created_at')
     .eq('id', ticketId)
     .single()
   if (!ticket) return { error: 'Ticket no encontrado' }
+
+  if (ticket.status === 'terminado')
+    return { error: 'No se puede regenerar el PDF de una solicitud terminada' }
 
   // Buscar primera evidencia (foto) para incluirla en el PDF
   const serviceClient = getServiceClient()

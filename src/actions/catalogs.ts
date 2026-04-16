@@ -133,3 +133,27 @@ export async function setDepartmentManager(department_id: string, manager_name: 
   revalidatePath('/admin/mantenimiento/catalogos')
   return { success: true }
 }
+
+// ─── Restricciones de ticket por departamento ─────────────
+
+export async function setDepartmentAllowedTypes(
+  departmentId: string,
+  allowedTypes: ('general' | 'maquinaria')[],
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+  if (!(await checkAdminRole(supabase, user.id))) return { error: 'Sin permiso' }
+
+  // 'general' siempre debe estar incluido
+  const types = allowedTypes.includes('general') ? allowedTypes : ['general', ...allowedTypes]
+
+  const { error } = await supabase
+    .from('departments')
+    .update({ allowed_ticket_types: types })
+    .eq('id', departmentId)
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin/mantenimiento/catalogos')
+  return { success: true }
+}

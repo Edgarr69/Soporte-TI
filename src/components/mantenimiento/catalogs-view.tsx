@@ -11,14 +11,14 @@ import { cn } from '@/lib/utils'
 import {
   createArea, updateArea, deleteArea,
   createMaintenanceCategory, updateMaintenanceCategory,
-  setDepartmentManager,
+  setDepartmentManager, setDepartmentAllowedTypes,
 } from '@/actions/catalogs'
 import { toast } from 'sonner'
-import { Plus, Pencil, Check, X, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Check, X, Trash2, HardHat, Wrench } from 'lucide-react'
 
 interface Area       { id: string; name: string; is_active: boolean; sort_order: number }
 interface Category   { id: string; name: string; type: string; is_active: boolean }
-interface Department { id: string; name: string }
+interface Department { id: string; name: string; allowed_ticket_types?: string[] | null }
 interface Manager    { id: string; department_id: string; manager_name: string; is_default: boolean }
 
 interface Props {
@@ -41,6 +41,7 @@ export function CatalogsView({ areas, generalCats, maqCats, departments, manager
           <TabsTrigger value="cats-general">Categorías General</TabsTrigger>
           <TabsTrigger value="cats-maq">Categorías Maquinaria</TabsTrigger>
           <TabsTrigger value="managers">Encargados</TabsTrigger>
+          <TabsTrigger value="restrictions">Restricciones</TabsTrigger>
         </TabsList>
 
         <TabsContent value="areas" className="mt-4">
@@ -54,6 +55,9 @@ export function CatalogsView({ areas, generalCats, maqCats, departments, manager
         </TabsContent>
         <TabsContent value="managers" className="mt-4">
           <ManagersPanel departments={departments} managers={managers} onSaved={() => router.refresh()} />
+        </TabsContent>
+        <TabsContent value="restrictions" className="mt-4">
+          <DeptRestrictionsPanel departments={departments} onSaved={() => router.refresh()} />
         </TabsContent>
       </Tabs>
     </div>
@@ -251,6 +255,80 @@ function CatsPanel({
             </div>
           ))}
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Restricciones de ticket por departamento ────────────
+
+function DeptRestrictionsPanel({
+  departments, onSaved,
+}: {
+  departments: Department[]
+  onSaved: () => void
+}) {
+  const [saving, setSaving] = useState<string | null>(null)
+
+  async function toggle(dept: Department) {
+    const current = dept.allowed_ticket_types ?? ['general', 'maquinaria']
+    const hasMaq = current.includes('maquinaria')
+    const next: ('general' | 'maquinaria')[] = hasMaq ? ['general'] : ['general', 'maquinaria']
+    setSaving(dept.id)
+    const r = await setDepartmentAllowedTypes(dept.id, next)
+    setSaving(null)
+    if (r.error) { toast.error(r.error); return }
+    toast.success(`${dept.name}: ${next.includes('maquinaria') ? 'Maquinaria habilitada' : 'Maquinaria deshabilitada'}`)
+    onSaved()
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm">Tipos de ticket por departamento</CardTitle>
+        <p className="text-xs text-zinc-500 mt-1">
+          Todos los departamentos siempre pueden crear tickets de mantenimiento general.
+          Activa la opción de maquinaria solo para los departamentos que la necesiten.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {departments.map((d) => {
+          const types = d.allowed_ticket_types ?? ['general', 'maquinaria']
+          const hasMaq = types.includes('maquinaria')
+          return (
+            <div key={d.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
+              <span className="flex-1 text-sm text-zinc-700 dark:text-zinc-300">{d.name}</span>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-xs text-zinc-500">
+                  <Wrench className="h-3 w-3" />
+                  General
+                </span>
+                <Badge variant="outline" className="text-xs border-green-300 text-green-700">Siempre</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-xs text-zinc-500">
+                  <HardHat className="h-3 w-3" />
+                  Maquinaria
+                </span>
+                <button
+                  onClick={() => toggle(d)}
+                  disabled={saving === d.id}
+                  className={cn(
+                    'relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none',
+                    hasMaq ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-700',
+                    saving === d.id && 'opacity-50 cursor-not-allowed',
+                  )}
+                  title={hasMaq ? 'Clic para deshabilitar maquinaria' : 'Clic para habilitar maquinaria'}
+                >
+                  <span className={cn(
+                    'inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform',
+                    hasMaq ? 'translate-x-4' : 'translate-x-1',
+                  )} />
+                </button>
+              </div>
+            </div>
+          )
+        })}
       </CardContent>
     </Card>
   )
