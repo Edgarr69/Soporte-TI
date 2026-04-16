@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -76,12 +76,16 @@ export function MaintenanceDetail({
   ticket, statusHistory, comments, evidencias, currentUserId, supabaseUrl, isReopened = false,
 }: Props) {
   const router = useRouter()
-  const [commentBody, setCommentBody]   = useState('')
-  const [submitting,  setSubmitting]    = useState(false)
-  const [cancelling,  setCancelling]    = useState(false)
-  const [cancelReason, setCancelReason] = useState('')
-  const [showCancel,  setShowCancel]    = useState(false)
-  const [uploading,   setUploading]     = useState(false)
+  const [commentBody, setCommentBody]     = useState('')
+  const [submitting,  setSubmitting]      = useState(false)
+  const [cancelling,  setCancelling]      = useState(false)
+  const [cancelReason, setCancelReason]   = useState('')
+  const [showCancel,  setShowCancel]      = useState(false)
+  const [uploading,   setUploading]       = useState(false)
+  const [localComments, setLocalComments] = useState(comments)
+
+  // Sincronizar cuando el servidor refresca los datos
+  useEffect(() => { setLocalComments(comments) }, [comments])
 
   const canCancel = ticket.status === 'pendiente'
   const canUpload = ticket.status !== 'cancelado'
@@ -89,13 +93,28 @@ export function MaintenanceDetail({
   const otherEvidencias = evidencias.filter((e) => e.type === 'evidencia')
 
   async function submitComment() {
-    if (!commentBody.trim()) return
+    const body = commentBody.trim()
+    if (!body) return
     setSubmitting(true)
-    const r = await addMaintenanceComment(ticket.id, commentBody.trim())
-    if (r.error) { toast.error(r.error); setSubmitting(false); return }
-    toast.success('Comentario enviado')
     setCommentBody('')
+
+    // Mostrar el comentario inmediatamente (optimistic)
+    const optimistic: Comment = {
+      id:         `temp-${Date.now()}`,
+      body,
+      created_at: new Date().toISOString(),
+      author:     null,
+    }
+    setLocalComments((prev) => [...prev, optimistic])
+
+    const r = await addMaintenanceComment(ticket.id, body)
     setSubmitting(false)
+    if (r.error) {
+      toast.error(r.error)
+      setLocalComments((prev) => prev.filter((c) => c.id !== optimistic.id))
+      setCommentBody(body)
+      return
+    }
     router.refresh()
   }
 
@@ -286,10 +305,10 @@ export function MaintenanceDetail({
               <CardTitle className="text-sm">Comentarios</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {comments.length === 0 && (
+              {localComments.length === 0 && (
                 <p className="text-xs text-zinc-400">Sin comentarios aún.</p>
               )}
-              {comments.map((c) => (
+              {localComments.map((c) => (
                 <div key={c.id} className="text-sm border-l-2 border-zinc-200 dark:border-zinc-700 pl-3">
                   <p className="font-medium text-zinc-700 dark:text-zinc-300">
                     {c.author?.full_name ?? c.author?.email ?? 'Usuario'}

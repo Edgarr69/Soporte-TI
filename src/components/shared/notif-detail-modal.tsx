@@ -1,6 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { X, User, Calendar, Tag, FileText, ArrowRight } from 'lucide-react'
 import type { AdminNotification, AdminNotificationType, Notification, NotificationType } from '@/lib/types'
@@ -138,6 +139,12 @@ export function NotifDetailModal({ item, onClose }: Props) {
   const modColor = mod ? (MODULE_COLORS[mod] ?? MODULE_COLORS.global) : MODULE_COLORS.global
   const modLabel = mod ? (MODULE_LABELS[mod] ?? mod) : 'General'
 
+  // Bloquear scroll del body mientras el modal está abierto
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
   const modal = (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
@@ -146,7 +153,7 @@ export function NotifDetailModal({ item, onClose }: Props) {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       <div
-        className="relative z-10 w-full max-w-lg rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden"
+        className="relative z-10 w-full max-w-lg rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -171,7 +178,7 @@ export function NotifDetailModal({ item, onClose }: Props) {
         </div>
 
         {/* Cuerpo */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           {item.body && (
             <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/60 px-4 py-3">
               <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">

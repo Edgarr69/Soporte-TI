@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -90,10 +90,13 @@ export function AdminMaintenanceDetail({
 }: Props) {
   const router = useRouter()
 
-  const [comment, setComment]         = useState('')
-  const [isInternal, setIsInternal]   = useState(false)
-  const [submitting, setSubmitting]   = useState(false)
-  const [transitioning, setTrans]     = useState(false)
+  const [comment, setComment]           = useState('')
+  const [isInternal, setIsInternal]     = useState(false)
+  const [submitting, setSubmitting]     = useState(false)
+  const [transitioning, setTrans]       = useState(false)
+  const [localComments, setLocalComments] = useState(comments)
+
+  useEffect(() => { setLocalComments(comments) }, [comments])
 
   // Assign panel state
   const [showAssign, setShowAssign]           = useState(false)
@@ -136,13 +139,29 @@ export function AdminMaintenanceDetail({
   }
 
   async function submitComment() {
-    if (!comment.trim()) return
+    const body = comment.trim()
+    if (!body) return
     setSubmitting(true)
-    const r = await addMaintenanceComment(ticket.id, comment.trim(), isInternal)
-    setSubmitting(false)
-    if (r.error) { toast.error(r.error); return }
-    toast.success('Comentario enviado')
     setComment('')
+
+    // Mostrar el comentario inmediatamente (optimistic)
+    const optimistic: Comment = {
+      id:          `temp-${Date.now()}`,
+      body,
+      is_internal: isInternal,
+      created_at:  new Date().toISOString(),
+      author:      null,
+    }
+    setLocalComments((prev) => [...prev, optimistic])
+
+    const r = await addMaintenanceComment(ticket.id, body, isInternal)
+    setSubmitting(false)
+    if (r.error) {
+      toast.error(r.error)
+      setLocalComments((prev) => prev.filter((c) => c.id !== optimistic.id))
+      setComment(body)
+      return
+    }
     router.refresh()
   }
 
@@ -568,10 +587,10 @@ export function AdminMaintenanceDetail({
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Comentarios</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              {comments.length === 0 && (
+              {localComments.length === 0 && (
                 <p className="text-xs text-zinc-400">Sin comentarios.</p>
               )}
-              {comments.map((c) => (
+              {localComments.map((c) => (
                 <div key={c.id} className={cn(
                   'text-sm border-l-2 pl-3',
                   c.is_internal
