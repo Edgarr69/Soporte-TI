@@ -46,7 +46,7 @@ export function TicketDetail({ ticket, history, comments }: Props) {
     <div className="space-y-6">
       {/* Encabezado */}
       <div className="flex items-center gap-3">
-        <LinkButton href="/tickets" variant="ghost" size="icon" className="-ml-2">
+        <LinkButton href="/mis-tickets" variant="ghost" size="icon" className="-ml-2">
           <ArrowLeft className="h-4 w-4" />
         </LinkButton>
         <div className="flex-1 min-w-0">
