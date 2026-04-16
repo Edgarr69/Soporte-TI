@@ -16,7 +16,7 @@ export default async function AdminMaintenanceTicketDetailPage({
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single()
+    .from('profiles').select('role, full_name').eq('id', user.id).single()
   if (!profile || !['admin_mantenimiento', 'super_admin'].includes(profile.role))
     redirect('/dashboard')
 
@@ -45,7 +45,7 @@ export default async function AdminMaintenanceTicketDetailPage({
       .order('created_at', { ascending: true }),
     supabase
       .from('maintenance_comments')
-      .select('*, author:profiles!author_id(full_name, email)')
+      .select('*, author_id, author:profiles(full_name, email)')
       .eq('ticket_id', id)
       .order('created_at', { ascending: true }),
     supabase
@@ -69,14 +69,26 @@ export default async function AdminMaintenanceTicketDetailPage({
   const isReopened = ticket.status === 'pendiente' &&
     (lastEntry?.from_status === 'terminado' || lastEntry?.from_status === 'cancelado')
 
+  type RawComment = { id: string; body: string; created_at: string; is_internal: boolean; author_id: string | null; author: { full_name: string; email: string } | { full_name: string; email: string }[] | null }
+  const normalizedComments = (comments ?? []).map((c: RawComment) => ({
+    id:          c.id,
+    body:        c.body,
+    created_at:  c.created_at,
+    is_internal: c.is_internal,
+    author_id:   c.author_id,
+    author:      Array.isArray(c.author) ? (c.author[0] ?? null) : c.author,
+  }))
+
   return (
     <AdminMaintenanceDetail
       ticket={ticket as unknown as Parameters<typeof AdminMaintenanceDetail>[0]['ticket']}
       statusHistory={history}
-      comments={comments ?? []}
+      comments={normalizedComments as unknown as Parameters<typeof AdminMaintenanceDetail>[0]['comments']}
       evidencias={evidencias ?? []}
       technicians={(technicians ?? []) as { id: string; full_name: string | null; email: string }[]}
       supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}
+      currentUserId={user.id}
+      currentUserName={profile?.full_name ?? user.email ?? ''}
       isReopened={isReopened}
     />
   )

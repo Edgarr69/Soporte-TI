@@ -41,7 +41,7 @@ export default async function MantenimientoDetailPage({
         .order('created_at', { ascending: true }),
       supabase
         .from('maintenance_comments')
-        .select('*, author:profiles!author_id(full_name, email)')
+        .select('*, author_id, author:profiles(full_name, email)')
         .eq('ticket_id', id)
         .eq('is_internal', false)
         .order('created_at', { ascending: true }),
@@ -52,12 +52,24 @@ export default async function MantenimientoDetailPage({
   const isReopened = ticket.status === 'pendiente' &&
     (lastEntry?.from_status === 'terminado' || lastEntry?.from_status === 'cancelado')
 
+  // Supabase devuelve joins como array — normalizar a objeto
+  type RawComment = { id: string; body: string; created_at: string; author_id: string | null; author: { full_name: string; email: string } | { full_name: string; email: string }[] | null }
+  const normalizedComments = (comments ?? []).map((c: RawComment) => ({
+    id:         c.id,
+    body:       c.body,
+    created_at: c.created_at,
+    author_id:  c.author_id,
+    author:     Array.isArray(c.author) ? (c.author[0] ?? null) : c.author,
+  }))
+
   return (
-    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
+    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
       <MaintenanceDetail
         ticket={ticket}
         statusHistory={history}
-        comments={comments ?? []}
+        comments={normalizedComments}
+        currentUserId={user.id}
+        currentUserName={profile?.full_name ?? user.email ?? ''}
         isReopened={isReopened}
       />
     </main>

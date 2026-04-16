@@ -41,14 +41,29 @@ export default async function TicketDetailPage({ params }: Props) {
 
   const { data: comments } = await supabase
     .from('ticket_comments')
-    .select('*, author:profiles(full_name, email)')
+    .select('*, author_id, author:profiles(full_name, email)')
     .eq('ticket_id', id)
     .eq('is_internal', false)
     .order('created_at', { ascending: true })
 
+  type RawComment = { id: string; body: string; created_at: string; author_id: string | null; author: { full_name: string; email: string } | { full_name: string; email: string }[] | null }
+  const normalizedComments = (comments ?? []).map((c: RawComment) => ({
+    id:         c.id,
+    body:       c.body,
+    created_at: c.created_at,
+    author_id:  c.author_id,
+    author:     Array.isArray(c.author) ? (c.author[0] ?? null) : c.author,
+  }))
+
   return (
-    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
-        <TicketDetail ticket={ticket} history={history ?? []} comments={comments ?? []} />
+    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
+      <TicketDetail
+        ticket={ticket}
+        history={history ?? []}
+        comments={normalizedComments}
+        currentUserId={user.id}
+        currentUserName={profile?.full_name ?? user.email ?? ''}
+      />
     </main>
   )
 }

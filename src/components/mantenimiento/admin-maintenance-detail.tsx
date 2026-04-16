@@ -35,6 +35,7 @@ interface Comment {
   body: string
   is_internal: boolean
   created_at: string
+  author_id: string | null
   author: { full_name: string; email: string } | null
 }
 
@@ -82,11 +83,14 @@ interface Props {
   evidencias: Evidencia[]
   technicians: Technician[]
   supabaseUrl: string
+  currentUserId: string
+  currentUserName: string
   isReopened?: boolean
 }
 
 export function AdminMaintenanceDetail({
-  ticket, statusHistory, comments, evidencias, technicians, supabaseUrl, isReopened = false,
+  ticket, statusHistory, comments, evidencias, technicians, supabaseUrl,
+  currentUserId, currentUserName, isReopened = false,
 }: Props) {
   const router = useRouter()
 
@@ -144,13 +148,14 @@ export function AdminMaintenanceDetail({
     setSubmitting(true)
     setComment('')
 
-    // Mostrar el comentario inmediatamente (optimistic)
+    const tempId = `temp-${Date.now()}`
     const optimistic: Comment = {
-      id:          `temp-${Date.now()}`,
+      id:          tempId,
       body,
       is_internal: isInternal,
       created_at:  new Date().toISOString(),
-      author:      null,
+      author_id:   currentUserId,
+      author:      { full_name: currentUserName, email: '' },
     }
     setLocalComments((prev) => [...prev, optimistic])
 
@@ -158,11 +163,9 @@ export function AdminMaintenanceDetail({
     setSubmitting(false)
     if (r.error) {
       toast.error(r.error)
-      setLocalComments((prev) => prev.filter((c) => c.id !== optimistic.id))
+      setLocalComments((prev) => prev.filter((c) => c.id !== tempId))
       setComment(body)
-      return
     }
-    router.refresh()
   }
 
   const [pdfCacheBust, setPdfCacheBust] = useState(() => Date.now())

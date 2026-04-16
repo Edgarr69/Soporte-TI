@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -13,7 +13,7 @@ import {
   type MaintenanceStatus, type MaintenanceType,
 } from '@/lib/types'
 import { formatDate, formatRelative, cn } from '@/lib/utils'
-import { ArrowLeft, Send, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Send, AlertTriangle, MessageSquare } from 'lucide-react'
 import { addMaintenanceComment, cancelMaintenanceTicket } from '@/actions/maintenance'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -31,6 +31,7 @@ interface Comment {
   id: string
   body: string
   created_at: string
+  author_id: string | null
   author: { full_name: string; email: string } | null
 }
 
@@ -54,21 +55,29 @@ interface Props {
   }
   statusHistory: HistoryEntry[]
   comments: Comment[]
+  currentUserId: string
+  currentUserName: string
   isReopened?: boolean
 }
 
 export function MaintenanceDetail({
-  ticket, statusHistory, comments, isReopened = false,
+  ticket, statusHistory, comments, currentUserId, currentUserName, isReopened = false,
 }: Props) {
   const router = useRouter()
-  const [commentBody, setCommentBody] = useState('')
-  const [submitting, setSubmitting]   = useState(false)
-  const [cancelling, setCancelling]   = useState(false)
-  const [cancelReason, setCancelReason] = useState('')
-  const [showCancel, setShowCancel]   = useState(false)
+  const [commentBody, setCommentBody]     = useState('')
+  const [submitting,  setSubmitting]      = useState(false)
+  const [cancelling,  setCancelling]      = useState(false)
+  const [cancelReason, setCancelReason]   = useState('')
+  const [showCancel,  setShowCancel]      = useState(false)
   const [localComments, setLocalComments] = useState(comments)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setLocalComments(comments) }, [comments])
+
+  // Auto-scroll al último mensaje
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [localComments])
 
   const canCancel = ticket.status === 'pendiente'
 
@@ -78,11 +87,13 @@ export function MaintenanceDetail({
     setSubmitting(true)
     setCommentBody('')
 
+    const tempId = `temp-${Date.now()}`
     const optimistic: Comment = {
-      id:         `temp-${Date.now()}`,
+      id:         tempId,
       body,
       created_at: new Date().toISOString(),
-      author:     null,
+      author_id:  currentUserId,
+      author:     { full_name: currentUserName, email: '' },
     }
     setLocalComments((prev) => [...prev, optimistic])
 
@@ -90,11 +101,9 @@ export function MaintenanceDetail({
     setSubmitting(false)
     if (r.error) {
       toast.error(r.error)
-      setLocalComments((prev) => prev.filter((c) => c.id !== optimistic.id))
+      setLocalComments((prev) => prev.filter((c) => c.id !== tempId))
       setCommentBody(body)
-      return
     }
-    router.refresh()
   }
 
   async function handleCancel() {
@@ -140,7 +149,7 @@ export function MaintenanceDetail({
               className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"
             >
               <AlertTriangle className="h-3 w-3" />
-              Cancelar
+              Cancelar solicitud
             </button>
           )}
         </div>
@@ -172,117 +181,170 @@ export function MaintenanceDetail({
         </Card>
       )}
 
-      {/* Datos de la solicitud */}
-      <Card className="border-zinc-200 dark:border-zinc-800">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Datos de la solicitud</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0 space-y-4">
-          <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
-            {ticket.descripcion}
-          </p>
-          <Separator />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <InfoItem label="Departamento"   value={ticket.department_name_snapshot ?? '—'} />
-            <InfoItem label="Área"           value={ticket.area_name_snapshot ?? '—'} />
-            <InfoItem label="Encargado"      value={ticket.encargado_nombre} />
-            <InfoItem label="Fecha solicitud" value={formatDate(ticket.fecha_solicitud)} />
-            {ticket.tecnico_nombre_snapshot && (
-              <InfoItem label="Técnico asignado" value={ticket.tecnico_nombre_snapshot} />
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Layout: chat izquierda, info derecha */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
-      {/* Motivo de cancelación */}
-      {ticket.cancel_reason && (
-        <Card className="border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-red-800 dark:text-red-300">Motivo de cancelación</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <p className="text-sm text-red-700 dark:text-red-400 whitespace-pre-wrap">
-              {ticket.cancel_reason}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+        {/* ── Chat ── */}
+        <div className="lg:col-span-2 lg:sticky lg:top-6">
+          <Card className="border-zinc-200 dark:border-zinc-800 flex flex-col h-[calc(100vh-14rem)]">
+            <CardHeader className="pb-2 border-b border-zinc-100 dark:border-zinc-800 flex-shrink-0">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <MessageSquare className="h-3.5 w-3.5" />
+                Mensajes
+                {localComments.length > 0 && (
+                  <span className="text-xs font-normal text-zinc-400">({localComments.length})</span>
+                )}
+              </CardTitle>
+            </CardHeader>
 
-      {/* Comentarios del equipo */}
-      {localComments.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-            Comentarios del equipo de soporte
-          </h2>
-          {localComments.map((c) => (
-            <Card key={c.id} className="border-zinc-200 dark:border-zinc-800">
-              <CardContent className="py-3 px-4">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                    {c.author?.full_name ?? c.author?.email ?? 'Soporte TI'}
-                  </span>
-                  <span className="text-xs text-zinc-400">{formatRelative(c.created_at)}</span>
-                </div>
-                <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{c.body}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Enviar comentario */}
-      <div className="flex gap-2">
-        <Textarea
-          value={commentBody}
-          onChange={(e) => setCommentBody(e.target.value)}
-          placeholder="Escribe un comentario…"
-          rows={2}
-          disabled={submitting}
-          className="flex-1"
-        />
-        <Button
-          size="sm"
-          onClick={submitComment}
-          disabled={submitting || !commentBody.trim()}
-          className="self-end"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Historial */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-          Historial del ticket
-        </h2>
-        <div className="relative pl-4">
-          <div className="absolute left-0 top-0 bottom-0 w-px bg-zinc-200 dark:bg-zinc-800" />
-          {statusHistory.map((h) => (
-            <div key={h.id} className="relative mb-4 pl-4">
-              <div className="absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950" />
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={cn('text-xs', MAINTENANCE_STATUS_COLORS[h.to_status as MaintenanceStatus])}>
-                      {MAINTENANCE_STATUS_LABELS[h.to_status as MaintenanceStatus] ?? h.to_status}
-                    </Badge>
-                    {h.from_status && (
-                      <span className="text-xs text-zinc-400">
-                        desde {MAINTENANCE_STATUS_LABELS[h.from_status as MaintenanceStatus] ?? h.from_status}
-                      </span>
-                    )}
-                  </div>
-                  {h.comment && (
-                    <p className="text-xs text-zinc-500 mt-0.5">{h.comment}</p>
-                  )}
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    {h.changer?.full_name ?? 'Sistema'}
+            {/* Burbujeas */}
+            <CardContent className="flex-1 overflow-y-auto py-4 px-3 space-y-3 min-h-0">
+              {localComments.length === 0 && (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-xs text-zinc-400 text-center">
+                    Sin mensajes aún.<br />Escribe uno para comenzar.
                   </p>
                 </div>
-                <span className="text-xs text-zinc-400 flex-shrink-0">{formatRelative(h.created_at)}</span>
-              </div>
+              )}
+
+              {localComments.map((c) => {
+                const isMe = c.author_id === currentUserId
+                return (
+                  <div
+                    key={c.id}
+                    className={cn(
+                      'flex flex-col gap-0.5 max-w-[82%]',
+                      isMe ? 'ml-auto items-end' : 'mr-auto items-start',
+                    )}
+                  >
+                    {!isMe && (
+                      <span className="text-[11px] text-zinc-500 px-1 font-medium">
+                        {c.author?.full_name ?? c.author?.email ?? '—'}
+                      </span>
+                    )}
+                    <div
+                      className={cn(
+                        'px-3 py-2 text-sm whitespace-pre-wrap break-words leading-relaxed',
+                        isMe
+                          ? 'bg-blue-500 text-white rounded-2xl rounded-br-sm'
+                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-2xl rounded-bl-sm',
+                      )}
+                    >
+                      {c.body}
+                    </div>
+                    <span className="text-[10px] text-zinc-400 px-1">
+                      {formatRelative(c.created_at)}
+                    </span>
+                  </div>
+                )
+              })}
+              <div ref={messagesEndRef} />
+            </CardContent>
+
+            {/* Input */}
+            <div className="flex gap-2 p-3 border-t border-zinc-100 dark:border-zinc-800 flex-shrink-0">
+              <Textarea
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    submitComment()
+                  }
+                }}
+                placeholder="Escribe un mensaje… (Enter para enviar)"
+                rows={2}
+                disabled={submitting}
+                className="flex-1 resize-none text-sm"
+              />
+              <Button
+                size="sm"
+                onClick={submitComment}
+                disabled={submitting || !commentBody.trim()}
+                className="self-end"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
-          ))}
+          </Card>
+        </div>
+
+        {/* ── Info + Historial ── */}
+        <div className="lg:col-span-3 space-y-4">
+
+          {/* Datos */}
+          <Card className="border-zinc-200 dark:border-zinc-800">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Datos de la solicitud</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-4">
+              <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                {ticket.descripcion}
+              </p>
+              <Separator />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <InfoItem label="Departamento"    value={ticket.department_name_snapshot ?? '—'} />
+                <InfoItem label="Área"            value={ticket.area_name_snapshot ?? '—'} />
+                <InfoItem label="Encargado"       value={ticket.encargado_nombre} />
+                <InfoItem label="Fecha solicitud" value={formatDate(ticket.fecha_solicitud)} />
+                {ticket.tecnico_nombre_snapshot && (
+                  <InfoItem label="Técnico asignado" value={ticket.tecnico_nombre_snapshot} />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Motivo de cancelación */}
+          {ticket.cancel_reason && (
+            <Card className="border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-red-800 dark:text-red-300">Motivo de cancelación</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-sm text-red-700 dark:text-red-400 whitespace-pre-wrap">
+                  {ticket.cancel_reason}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Historial */}
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+              Historial del ticket
+            </h2>
+            <div className="relative pl-4">
+              <div className="absolute left-0 top-0 bottom-0 w-px bg-zinc-200 dark:bg-zinc-800" />
+              {statusHistory.map((h) => (
+                <div key={h.id} className="relative mb-4 pl-4 last:mb-0">
+                  <div className="absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950" />
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className={cn('text-xs', MAINTENANCE_STATUS_COLORS[h.to_status as MaintenanceStatus])}>
+                          {MAINTENANCE_STATUS_LABELS[h.to_status as MaintenanceStatus] ?? h.to_status}
+                        </Badge>
+                        {h.from_status && (
+                          <span className="text-xs text-zinc-400">
+                            desde {MAINTENANCE_STATUS_LABELS[h.from_status as MaintenanceStatus] ?? h.from_status}
+                          </span>
+                        )}
+                      </div>
+                      {h.comment && (
+                        <p className="text-xs text-zinc-500 mt-0.5">{h.comment}</p>
+                      )}
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {h.changer?.full_name ?? 'Sistema'}
+                      </p>
+                    </div>
+                    <span className="text-xs text-zinc-400 flex-shrink-0">
+                      {formatRelative(h.created_at)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
