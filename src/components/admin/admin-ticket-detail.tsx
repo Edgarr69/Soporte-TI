@@ -122,7 +122,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
     <div className="space-y-6 pb-20 lg:pb-0">
       {/* Encabezado */}
       <div className="flex items-start gap-3">
-        <LinkButton href="/admin/tickets" variant="ghost" size="icon" className="-ml-2 mt-0.5">
+        <LinkButton href="/admin/sistemas/tickets" variant="ghost" size="icon" className="-ml-2 mt-0.5">
           <ArrowLeft className="h-4 w-4" />
         </LinkButton>
         <div className="flex-1 min-w-0">
