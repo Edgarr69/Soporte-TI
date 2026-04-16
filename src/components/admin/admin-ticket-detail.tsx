@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -8,6 +8,7 @@ import {
   updateTicketResolution,
   addComment,
 } from '@/actions/tickets'
+import { createClient } from '@/lib/supabase/client'
 import {
   ArrowLeft, Loader2, RotateCcw, MessageSquare, Lock, Calendar, Clock, CheckCircle2,
 } from 'lucide-react'
@@ -35,9 +36,10 @@ interface Props {
   ticket: Record<string, unknown>
   history: Record<string, unknown>[]
   comments: Record<string, unknown>[]
+  userId: string
 }
 
-export function AdminTicketDetail({ ticket: initialTicket, history, comments: initialComments }: Props) {
+export function AdminTicketDetail({ ticket: initialTicket, history, comments: initialComments, userId }: Props) {
   const router  = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -65,6 +67,34 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
   const [visibleRes,    setVisibleRes]    = useState(t.visible_resolution_summary ?? '')
   const [techNotes,     setTechNotes]     = useState(t.technical_notes ?? '')
   const [comments,      setComments]      = useState(initialComments)
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`admin-ticket-comments-${t.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ticket_comments',
+        filter: `ticket_id=eq.${t.id}`,
+      }, async (payload) => {
+        const row = payload.new as { id: string; author_id: string | null }
+        if (row.author_id === userId) return
+        const { data } = await supabase
+          .from('ticket_comments')
+          .select('id, body, is_internal, created_at, author_id, author:profiles(full_name, email)')
+          .eq('id', row.id)
+          .single()
+        if (!data) return
+        const author = Array.isArray(data.author) ? data.author[0] : data.author
+        setComments((prev) => {
+          if (prev.some((c) => (c as Record<string, unknown>).id === data.id)) return prev
+          return [...prev, { ...data, author } as Record<string, unknown>]
+        })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [t.id, userId])
 
   const allowedStatuses = TICKET_TRANSITIONS[t.status] ?? []
 

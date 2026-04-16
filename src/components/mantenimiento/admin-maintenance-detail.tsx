@@ -19,6 +19,7 @@ import {
 import { cn, formatDate } from '@/lib/utils'
 import { ChevronLeft, FileText, CheckCircle2, UserCheck, Play, Check, X, Upload, Download, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
 import { changeMaintenanceStatus, addMaintenanceComment, uploadEvidencia, regeneratePdf, reassignTecnico, deleteEvidencia } from '@/actions/maintenance'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
 interface HistoryEntry {
@@ -101,6 +102,34 @@ export function AdminMaintenanceDetail({
   const [localComments, setLocalComments] = useState(comments)
 
   useEffect(() => { setLocalComments(comments) }, [comments])
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`admin-maint-comments-${ticket.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'maintenance_comments',
+        filter: `ticket_id=eq.${ticket.id}`,
+      }, async (payload) => {
+        const row = payload.new as { id: string; author_id: string | null }
+        if (row.author_id === currentUserId) return
+        const { data } = await supabase
+          .from('maintenance_comments')
+          .select('id, body, is_internal, created_at, author_id, author:profiles(full_name, email)')
+          .eq('id', row.id)
+          .single()
+        if (!data) return
+        const author = Array.isArray(data.author) ? data.author[0] : data.author
+        setLocalComments((prev) => {
+          if (prev.some((c) => c.id === data.id)) return prev
+          return [...prev, { ...data, author }]
+        })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [ticket.id, currentUserId])
 
   // Assign panel state
   const [showAssign, setShowAssign]           = useState(false)

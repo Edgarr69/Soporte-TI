@@ -15,6 +15,7 @@ import {
 import { formatDate, formatRelative, cn } from '@/lib/utils'
 import { ArrowLeft, Send, AlertTriangle, MessageSquare } from 'lucide-react'
 import { addMaintenanceComment, cancelMaintenanceTicket } from '@/actions/maintenance'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -73,6 +74,34 @@ export function MaintenanceDetail({
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setLocalComments(comments) }, [comments])
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`maintenance-comments-${ticket.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'maintenance_comments',
+        filter: `ticket_id=eq.${ticket.id}`,
+      }, async (payload) => {
+        const row = payload.new as { id: string; author_id: string | null }
+        if (row.author_id === currentUserId) return
+        const { data } = await supabase
+          .from('maintenance_comments')
+          .select('id, body, created_at, author_id, author:profiles(full_name, email)')
+          .eq('id', row.id)
+          .single()
+        if (!data) return
+        const author = Array.isArray(data.author) ? data.author[0] : data.author
+        setLocalComments((prev) => {
+          if (prev.some((c) => c.id === data.id)) return prev
+          return [...prev, { ...data, author }]
+        })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [ticket.id, currentUserId])
 
   // Auto-scroll al último mensaje
   useEffect(() => {

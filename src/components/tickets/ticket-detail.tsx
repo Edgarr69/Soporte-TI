@@ -14,6 +14,7 @@ import {
 } from '@/lib/types'
 import { formatDateTime, formatRelative, minutesToHuman, cn } from '@/lib/utils'
 import { addComment } from '@/actions/tickets'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
 interface Comment {
@@ -51,6 +52,34 @@ export function TicketDetail({ ticket, history, comments, currentUserId, current
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setLocalComments(comments) }, [comments])
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`ticket-comments-${t.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ticket_comments',
+        filter: `ticket_id=eq.${t.id}`,
+      }, async (payload) => {
+        const row = payload.new as { id: string; author_id: string | null; is_internal: boolean }
+        if (row.author_id === currentUserId || row.is_internal) return
+        const { data } = await supabase
+          .from('ticket_comments')
+          .select('id, body, created_at, author_id, author:profiles(full_name, email)')
+          .eq('id', row.id)
+          .single()
+        if (!data) return
+        const author = Array.isArray(data.author) ? data.author[0] : data.author
+        setLocalComments((prev) => {
+          if (prev.some((c) => c.id === data.id)) return prev
+          return [...prev, { ...data, author }]
+        })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [t.id, currentUserId])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

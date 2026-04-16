@@ -45,6 +45,7 @@ export default async function AdminTicketDetailPage({ params }: Props) {
       ticket={ticket as Record<string, unknown>}
       history={history ?? []}
       comments={comments ?? []}
+      userId={user.id}
     />
   )
 }
