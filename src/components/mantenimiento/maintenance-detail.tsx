@@ -1,23 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { LinkButton } from '@/components/ui/link-button'
-import { HistorialTimeline } from '@/components/shared/historial-timeline'
 import {
   MAINTENANCE_STATUS_LABELS, MAINTENANCE_STATUS_COLORS,
   MAINTENANCE_TYPE_LABELS,
   type MaintenanceStatus, type MaintenanceType,
 } from '@/lib/types'
-import { formatDate, cn } from '@/lib/utils'
-import {
-  ChevronLeft, FileText, Upload, Send, AlertTriangle, CheckCircle2,
-} from 'lucide-react'
-import { addMaintenanceComment, cancelMaintenanceTicket, uploadEvidencia } from '@/actions/maintenance'
+import { formatDate, formatRelative, cn } from '@/lib/utils'
+import { ArrowLeft, Send, AlertTriangle } from 'lucide-react'
+import { addMaintenanceComment, cancelMaintenanceTicket } from '@/actions/maintenance'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -35,15 +32,6 @@ interface Comment {
   body: string
   created_at: string
   author: { full_name: string; email: string } | null
-}
-
-interface Evidencia {
-  id: string
-  file_name: string
-  file_path: string
-  mime_type: string | null
-  type: 'pdf_sistema' | 'evidencia'
-  created_at: string
 }
 
 interface Props {
@@ -66,31 +54,23 @@ interface Props {
   }
   statusHistory: HistoryEntry[]
   comments: Comment[]
-  evidencias: Evidencia[]
-  currentUserId: string
-  supabaseUrl: string
   isReopened?: boolean
 }
 
 export function MaintenanceDetail({
-  ticket, statusHistory, comments, evidencias, currentUserId, supabaseUrl, isReopened = false,
+  ticket, statusHistory, comments, isReopened = false,
 }: Props) {
   const router = useRouter()
-  const [commentBody, setCommentBody]     = useState('')
-  const [submitting,  setSubmitting]      = useState(false)
-  const [cancelling,  setCancelling]      = useState(false)
-  const [cancelReason, setCancelReason]   = useState('')
-  const [showCancel,  setShowCancel]      = useState(false)
-  const [uploading,   setUploading]       = useState(false)
+  const [commentBody, setCommentBody] = useState('')
+  const [submitting, setSubmitting]   = useState(false)
+  const [cancelling, setCancelling]   = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [showCancel, setShowCancel]   = useState(false)
   const [localComments, setLocalComments] = useState(comments)
 
-  // Sincronizar cuando el servidor refresca los datos
   useEffect(() => { setLocalComments(comments) }, [comments])
 
   const canCancel = ticket.status === 'pendiente'
-  const canUpload = ticket.status !== 'cancelado'
-
-  const otherEvidencias = evidencias.filter((e) => e.type === 'evidencia')
 
   async function submitComment() {
     const body = commentBody.trim()
@@ -98,7 +78,6 @@ export function MaintenanceDetail({
     setSubmitting(true)
     setCommentBody('')
 
-    // Mostrar el comentario inmediatamente (optimistic)
     const optimistic: Comment = {
       id:         `temp-${Date.now()}`,
       body,
@@ -127,68 +106,47 @@ export function MaintenanceDetail({
     router.refresh()
   }
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files
-    if (!files?.length) return
-    setUploading(true)
-    const fd = new FormData()
-    Array.from(files).forEach((f) => fd.append('files', f))
-    const r = await uploadEvidencia(ticket.id, fd)
-    if ('error' in r) { toast.error(r.error); setUploading(false); return }
-    toast.success(`${r.uploaded} archivo(s) subido(s)`)
-    setUploading(false)
-    router.refresh()
-  }
-
-  function storageUrl(path: string) {
-    return `${supabaseUrl}/storage/v1/object/public/maintenance-docs/${path}`
-  }
-
   return (
     <div className="space-y-6">
-      {/* Back + header */}
-      <div>
-        <LinkButton href="/mis-tickets" variant="ghost" size="sm" className="-ml-2 mb-2">
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Mis tickets
+      {/* Encabezado */}
+      <div className="flex items-center gap-3">
+        <LinkButton href="/mis-tickets" variant="ghost" size="icon" className="-ml-2">
+          <ArrowLeft className="h-4 w-4" />
         </LinkButton>
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-mono text-zinc-400">{ticket.folio}</span>
-              {isReopened ? (
-                <Badge className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
-                  Reabierto
-                </Badge>
-              ) : (
-                <Badge className={cn('text-xs', MAINTENANCE_STATUS_COLORS[ticket.status])}>
-                  {MAINTENANCE_STATUS_LABELS[ticket.status]}
-                </Badge>
-              )}
-            </div>
-            <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mt-1">
-              {ticket.servicio}
-            </h1>
-            <p className="text-sm text-zinc-500">
-              {MAINTENANCE_TYPE_LABELS[ticket.type]}
-              {ticket.category ? ` · ${ticket.category.name}` : ''}
-            </p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-mono text-zinc-400">{ticket.folio}</span>
+            {isReopened && (
+              <Badge className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
+                Reabierto
+              </Badge>
+            )}
           </div>
+          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mt-0.5">
+            {ticket.servicio}
+          </h1>
+          <p className="text-sm text-zinc-500 mt-0.5">
+            {MAINTENANCE_TYPE_LABELS[ticket.type]}
+            {ticket.category ? ` · ${ticket.category.name}` : ''}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1.5">
+          <Badge className={cn('text-xs', MAINTENANCE_STATUS_COLORS[ticket.status])}>
+            {MAINTENANCE_STATUS_LABELS[ticket.status]}
+          </Badge>
           {canCancel && (
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={() => setShowCancel(true)}
-              className="border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+              className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"
             >
-              <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-              Cancelar solicitud
-            </Button>
+              <AlertTriangle className="h-3 w-3" />
+              Cancelar
+            </button>
           )}
         </div>
       </div>
 
-      {/* Cancel dialog */}
+      {/* Diálogo de cancelación */}
       {showCancel && (
         <Card className="border-red-300 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/10">
           <CardContent className="py-4 space-y-3">
@@ -203,20 +161,10 @@ export function MaintenanceDetail({
               disabled={cancelling}
             />
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={handleCancel}
-                disabled={cancelling}
-              >
+              <Button size="sm" variant="destructive" onClick={handleCancel} disabled={cancelling}>
                 {cancelling ? 'Cancelando…' : 'Sí, cancelar'}
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowCancel(false)}
-                disabled={cancelling}
-              >
+              <Button size="sm" variant="ghost" onClick={() => setShowCancel(false)} disabled={cancelling}>
                 Volver
               </Button>
             </div>
@@ -224,147 +172,128 @@ export function MaintenanceDetail({
         </Card>
       )}
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left — detail */}
-        <div className="lg:col-span-2 space-y-4">
+      {/* Datos de la solicitud */}
+      <Card className="border-zinc-200 dark:border-zinc-800">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Datos de la solicitud</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-4">
+          <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
+            {ticket.descripcion}
+          </p>
+          <Separator />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <InfoItem label="Departamento"   value={ticket.department_name_snapshot ?? '—'} />
+            <InfoItem label="Área"           value={ticket.area_name_snapshot ?? '—'} />
+            <InfoItem label="Encargado"      value={ticket.encargado_nombre} />
+            <InfoItem label="Fecha solicitud" value={formatDate(ticket.fecha_solicitud)} />
+            {ticket.tecnico_nombre_snapshot && (
+              <InfoItem label="Técnico asignado" value={ticket.tecnico_nombre_snapshot} />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Datos */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Detalles de la solicitud</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <Row label="Departamento"  value={ticket.department_name_snapshot ?? '—'} />
-              <Row label="Área"          value={ticket.area_name_snapshot ?? '—'} />
-              <Row label="Encargado"     value={ticket.encargado_nombre} />
-              <Row label="Fecha solicitud" value={formatDate(ticket.fecha_solicitud)} />
-              {ticket.tecnico_nombre_snapshot && (
-                <Row label="Técnico asignado" value={ticket.tecnico_nombre_snapshot} />
-              )}
-              {ticket.cancel_reason && (
-                <Row label="Motivo cancelación" value={ticket.cancel_reason} />
-              )}
-              <div className="pt-1 border-t border-zinc-100 dark:border-zinc-800">
-                <p className="text-xs text-zinc-500 font-medium mb-1">Descripción</p>
-                <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap text-sm">
-                  {ticket.descripcion}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Motivo de cancelación */}
+      {ticket.cancel_reason && (
+        <Card className="border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-red-800 dark:text-red-300">Motivo de cancelación</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="text-sm text-red-700 dark:text-red-400 whitespace-pre-wrap">
+              {ticket.cancel_reason}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Documentos */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Documentos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {otherEvidencias.map((ev) => (
-                <a
-                  key={ev.id}
-                  href={storageUrl(ev.file_path)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
-                >
-                  <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                  <span className="text-sm flex-1 truncate">{ev.file_name}</span>
-                  <span className="text-xs text-zinc-400">
-                    {formatDate(ev.created_at)}
+      {/* Comentarios del equipo */}
+      {localComments.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+            Comentarios del equipo de soporte
+          </h2>
+          {localComments.map((c) => (
+            <Card key={c.id} className="border-zinc-200 dark:border-zinc-800">
+              <CardContent className="py-3 px-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    {c.author?.full_name ?? c.author?.email ?? 'Soporte TI'}
                   </span>
-                </a>
-              ))}
-
-              {!canUpload && otherEvidencias.length === 0 && (
-                <p className="text-xs text-zinc-400">Sin documentos adjuntos.</p>
-              )}
-
-              {canUpload && (
-                <label className="flex items-center gap-2 p-2.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer transition-colors">
-                  <Upload className="h-4 w-4 text-zinc-400 flex-shrink-0" />
-                  <span className="text-sm text-zinc-500">
-                    {uploading ? 'Subiendo…' : 'Subir evidencia (PDF / JPG)'}
-                  </span>
-                  <input
-                    type="file"
-                    accept="application/pdf,image/jpeg,image/png"
-                    multiple
-                    className="hidden"
-                    disabled={uploading}
-                    onChange={handleUpload}
-                  />
-                </label>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Comentarios */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Comentarios</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {localComments.length === 0 && (
-                <p className="text-xs text-zinc-400">Sin comentarios aún.</p>
-              )}
-              {localComments.map((c) => (
-                <div key={c.id} className="text-sm border-l-2 border-zinc-200 dark:border-zinc-700 pl-3">
-                  <p className="font-medium text-zinc-700 dark:text-zinc-300">
-                    {c.author?.full_name ?? c.author?.email ?? 'Usuario'}
-                    <span className="text-xs font-normal text-zinc-400 ml-2">{formatDate(c.created_at)}</span>
-                  </p>
-                  <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">{c.body}</p>
+                  <span className="text-xs text-zinc-400">{formatRelative(c.created_at)}</span>
                 </div>
-              ))}
-
-              <div className="flex gap-2 pt-2">
-                <Textarea
-                  value={commentBody}
-                  onChange={(e) => setCommentBody(e.target.value)}
-                  placeholder="Escribe un comentario…"
-                  rows={2}
-                  disabled={submitting}
-                  className="flex-1"
-                />
-                <Button
-                  size="sm"
-                  onClick={submitComment}
-                  disabled={submitting || !commentBody.trim()}
-                  className="self-end"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{c.body}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
+      )}
 
-        {/* Right — timeline */}
-        <div>
-          <HistorialTimeline
-            entries={statusHistory.map((h) => ({
-              id:          h.id,
-              from_status: h.from_status,
-              to_status:   h.to_status,
-              comment:     h.comment,
-              created_at:  h.created_at,
-              changer:     h.changer,
-            }))}
-            statusLabels={MAINTENANCE_STATUS_LABELS}
-            statusColors={MAINTENANCE_STATUS_COLORS}
-          />
+      {/* Enviar comentario */}
+      <div className="flex gap-2">
+        <Textarea
+          value={commentBody}
+          onChange={(e) => setCommentBody(e.target.value)}
+          placeholder="Escribe un comentario…"
+          rows={2}
+          disabled={submitting}
+          className="flex-1"
+        />
+        <Button
+          size="sm"
+          onClick={submitComment}
+          disabled={submitting || !commentBody.trim()}
+          className="self-end"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Historial */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+          Historial del ticket
+        </h2>
+        <div className="relative pl-4">
+          <div className="absolute left-0 top-0 bottom-0 w-px bg-zinc-200 dark:bg-zinc-800" />
+          {statusHistory.map((h) => (
+            <div key={h.id} className="relative mb-4 pl-4">
+              <div className="absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950" />
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className={cn('text-xs', MAINTENANCE_STATUS_COLORS[h.to_status as MaintenanceStatus])}>
+                      {MAINTENANCE_STATUS_LABELS[h.to_status as MaintenanceStatus] ?? h.to_status}
+                    </Badge>
+                    {h.from_status && (
+                      <span className="text-xs text-zinc-400">
+                        desde {MAINTENANCE_STATUS_LABELS[h.from_status as MaintenanceStatus] ?? h.from_status}
+                      </span>
+                    )}
+                  </div>
+                  {h.comment && (
+                    <p className="text-xs text-zinc-500 mt-0.5">{h.comment}</p>
+                  )}
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {h.changer?.full_name ?? 'Sistema'}
+                  </p>
+                </div>
+                <span className="text-xs text-zinc-400 flex-shrink-0">{formatRelative(h.created_at)}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function InfoItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex gap-2">
-      <span className="text-zinc-400 w-28 sm:w-36 flex-shrink-0">{label}</span>
-      <span className="text-zinc-700 dark:text-zinc-300 flex-1 min-w-0 break-words">{value}</span>
+    <div>
+      <p className="text-xs text-zinc-400">{label}</p>
+      <p className="text-sm font-medium">{value}</p>
     </div>
   )
 }

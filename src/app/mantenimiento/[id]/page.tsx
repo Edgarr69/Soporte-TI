@@ -32,7 +32,7 @@ export default async function MantenimientoDetailPage({
   // Users can only see their own tickets (admins use the admin routes)
   if (!ticket || (ticket.user_id !== user.id && profile.role === 'usuario')) notFound()
 
-  const [{ data: statusHistory }, { data: comments }, { data: evidencias }] =
+  const [{ data: statusHistory }, { data: comments }] =
     await Promise.all([
       supabase
         .from('maintenance_status_history')
@@ -44,12 +44,6 @@ export default async function MantenimientoDetailPage({
         .select('*, author:profiles!author_id(full_name, email)')
         .eq('ticket_id', id)
         .eq('is_internal', false)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('maintenance_evidencias')
-        .select('*')
-        .eq('ticket_id', id)
-        .neq('type', 'pdf_sistema')
         .order('created_at', { ascending: true }),
     ])
 
@@ -64,9 +58,6 @@ export default async function MantenimientoDetailPage({
         ticket={ticket}
         statusHistory={history}
         comments={comments ?? []}
-        evidencias={evidencias ?? []}
-        currentUserId={user.id}
-        supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}
         isReopened={isReopened}
       />
     </main>
