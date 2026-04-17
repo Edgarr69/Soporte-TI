@@ -20,12 +20,14 @@ export default async function CatalogosPage() {
     { data: maqCats },
     { data: departments },
     { data: managers },
+    { data: subcategories },
   ] = await Promise.all([
     supabase.from('areas').select('id, name, is_active, sort_order').order('sort_order'),
     supabase.from('maintenance_categories').select('id, name, type, is_active').eq('type', 'general').order('sort_order'),
     supabase.from('maintenance_categories').select('id, name, type, is_active').eq('type', 'maquinaria').order('sort_order'),
     supabase.from('departments').select('id, name, allowed_ticket_types').order('name'),
     supabase.from('department_managers').select('id, department_id, manager_name, is_default').eq('is_default', true),
+    supabase.from('machine_subcategories').select('id, category_id, name, is_active, sort_order').order('sort_order'),
   ])
 
   return (
@@ -35,6 +37,7 @@ export default async function CatalogosPage() {
       maqCats={maqCats ?? []}
       departments={departments ?? []}
       managers={managers ?? []}
+      subcategories={subcategories ?? []}
     />
   )
 }

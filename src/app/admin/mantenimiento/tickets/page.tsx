@@ -7,7 +7,7 @@ import { AdminMaintenanceList } from '@/components/mantenimiento/admin-maintenan
 export default async function AdminMaintenanceTicketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; type?: string; q?: string }>
+  searchParams: Promise<{ status?: string; type?: string }>
 }) {
   const params = await searchParams
   const supabase = await createClient()

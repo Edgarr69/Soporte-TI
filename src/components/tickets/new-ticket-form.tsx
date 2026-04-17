@@ -15,8 +15,8 @@ import { toast } from 'sonner'
 import { type Profile } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-interface Category { id: string; name: string; icon: string | null }
-interface Subcategory { id: string; category_id: string; name: string; base_score: number }
+interface Category { id: string; name: string }
+interface Subcategory { id: string; category_id: string; name: string }
 
 interface Props {
   categories: Category[]

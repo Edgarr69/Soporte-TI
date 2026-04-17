@@ -134,6 +134,58 @@ export async function setDepartmentManager(department_id: string, manager_name: 
   return { success: true }
 }
 
+// ─── Subcategorías de maquinaria ──────────────────────────
+
+export async function createMachineSubcategory(categoryId: string, name: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+  if (!(await checkAdminRole(supabase, user.id))) return { error: 'Sin permiso' }
+
+  const { data: last } = await supabase
+    .from('machine_subcategories')
+    .select('sort_order')
+    .eq('category_id', categoryId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .single()
+  const sort_order = (last?.sort_order ?? 0) + 1
+
+  const { error } = await supabase
+    .from('machine_subcategories')
+    .insert({ category_id: categoryId, name: name.trim(), sort_order })
+  if (error) return { error: error.message }
+  revalidatePath('/admin/mantenimiento/catalogos')
+  return { success: true }
+}
+
+export async function updateMachineSubcategory(id: string, name: string, is_active: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+  if (!(await checkAdminRole(supabase, user.id))) return { error: 'Sin permiso' }
+
+  const { error } = await supabase
+    .from('machine_subcategories')
+    .update({ name: name.trim(), is_active })
+    .eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/mantenimiento/catalogos')
+  return { success: true }
+}
+
+export async function deleteMachineSubcategory(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+  if (!(await checkAdminRole(supabase, user.id))) return { error: 'Sin permiso' }
+
+  const { error } = await supabase.from('machine_subcategories').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/mantenimiento/catalogos')
+  return { success: true }
+}
+
 // ─── Restricciones de ticket por departamento ─────────────
 
 export async function setDepartmentAllowedTypes(

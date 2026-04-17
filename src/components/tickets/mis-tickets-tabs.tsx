@@ -1,6 +1,6 @@
 'use client'
 
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
@@ -27,12 +27,13 @@ interface MaintRow {
 }
 
 interface Props {
-  sysTickets: SysRow[]
+  sysTickets:    SysRow[]
   generalTickets: MaintRow[]
-  maqTickets: MaintRow[]
+  maqTickets:    MaintRow[]
+  canMaquinaria?: boolean
 }
 
-export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets }: Props) {
+export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets, canMaquinaria = true }: Props) {
   const searchParams = useSearchParams()
   const defaultTab   = searchParams.get('tab') ?? 'sistemas'
 
@@ -49,11 +50,13 @@ export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets }: Props
           Mant. General
           <Badge variant="outline" className="ml-1 text-xs px-1.5 py-0 h-4">{generalTickets.length}</Badge>
         </TabsTrigger>
-        <TabsTrigger value="maquinaria" className="gap-1.5">
-          <Wrench className="h-3.5 w-3.5" />
-          Maquinaria
-          <Badge variant="outline" className="ml-1 text-xs px-1.5 py-0 h-4">{maqTickets.length}</Badge>
-        </TabsTrigger>
+        {canMaquinaria && (
+          <TabsTrigger value="maquinaria" className="gap-1.5">
+            <Wrench className="h-3.5 w-3.5" />
+            Maquinaria
+            <Badge variant="outline" className="ml-1 text-xs px-1.5 py-0 h-4">{maqTickets.length}</Badge>
+          </TabsTrigger>
+        )}
       </TabsList>
 
       {/* ── Sistemas ── */}
@@ -107,12 +110,14 @@ export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets }: Props
       </TabsContent>
 
       {/* ── Maquinaria ── */}
-      <TabsContent value="maquinaria">
-        <div className="flex justify-end mb-3">
-          <LinkButton href="/mantenimiento/nuevo?tipo=maquinaria" size="sm">+ Nueva solicitud</LinkButton>
-        </div>
-        <MaintListSection items={maqTickets} empty="No tienes solicitudes de maquinaria." />
-      </TabsContent>
+      {canMaquinaria && (
+        <TabsContent value="maquinaria">
+          <div className="flex justify-end mb-3">
+            <LinkButton href="/mantenimiento/nuevo?tipo=maquinaria" size="sm">+ Nueva solicitud</LinkButton>
+          </div>
+          <MaintListSection items={maqTickets} empty="No tienes solicitudes de maquinaria." />
+        </TabsContent>
+      )}
     </Tabs>
   )
 }

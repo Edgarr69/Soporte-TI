@@ -28,11 +28,12 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
   const supabase = createClient()
   const isAdmin  = ADMIN_ROLES.includes(role)
 
-  const [count, setCount]       = useState(initialCount)
-  const [items, setItems]       = useState<NotifItem[]>([])
-  const [open, setOpen]         = useState(false)
-  const [loaded, setLoaded]     = useState(false)
-  const [selected, setSelected] = useState<NotifItem | null>(null)
+  const [count, setCount]         = useState(initialCount)
+  const [items, setItems]         = useState<NotifItem[]>([])
+  const [open, setOpen]           = useState(false)
+  const [loaded, setLoaded]       = useState(false)
+  const [selected, setSelected]   = useState<NotifItem | null>(null)
+  const [markingAll, setMarkingAll] = useState(false)
 
   useEffect(() => { setCount(initialCount) }, [initialCount])
 
@@ -72,6 +73,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
   }
 
   async function markAllRead() {
+    setMarkingAll(true)
     if (isAdmin) {
       await supabase.rpc('mark_all_admin_notifications_read')
     } else {
@@ -81,6 +83,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
         .eq('user_id', userId)
         .eq('is_read', false)
     }
+    setMarkingAll(false)
     setCount(0)
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })))
   }
@@ -108,9 +111,10 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
             {count > 0 && (
               <button
                 onClick={markAllRead}
-                className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                disabled={markingAll}
+                className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Marcar todas como leídas
+                {markingAll ? 'Marcando…' : 'Marcar todas como leídas'}
               </button>
             )}
           </div>

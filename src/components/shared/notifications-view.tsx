@@ -19,13 +19,16 @@ export function NotificationsView({ initialNotifications, userId }: Props) {
   const supabase = createClient()
   const [notifications, setNotifications] = useState(initialNotifications)
   const [selected, setSelected] = useState<NotifItem | null>(null)
+  const [markingAll, setMarkingAll] = useState(false)
 
   async function markAllRead() {
+    setMarkingAll(true)
     await supabase
       .from('notifications')
       .update({ is_read: true })
       .eq('user_id', userId)
       .eq('is_read', false)
+    setMarkingAll(false)
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
     toast.success('Todas marcadas como leídas.')
   }
@@ -45,9 +48,9 @@ export function NotificationsView({ initialNotifications, userId }: Props) {
       <div className="space-y-3">
         {hasUnread && (
           <div className="flex justify-end">
-            <Button variant="outline" size="sm" onClick={markAllRead}>
+            <Button variant="outline" size="sm" onClick={markAllRead} disabled={markingAll}>
               <Check className="h-3.5 w-3.5 mr-1.5" />
-              Marcar todas como leídas
+              {markingAll ? 'Marcando…' : 'Marcar todas como leídas'}
             </Button>
           </div>
         )}

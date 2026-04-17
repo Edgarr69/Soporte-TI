@@ -13,32 +13,28 @@ export default async function MisTicketsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*, department:departments(id, name)')
+    .select('*, department:departments(id, name, allowed_ticket_types)')
     .eq('id', user.id)
     .single()
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
 
-  const [{ data: sysTickets }, { data: generalTickets }, { data: maqTickets }] =
+  const [{ data: sysTickets }, { data: maintTickets }] =
     await Promise.all([
       supabase
         .from('tickets')
-        .select('id, folio, status, priority, description, is_reopened, created_at, updated_at, ticket_categories(name), ticket_subcategories(name)')
+        .select('id, folio, status, priority, description, is_reopened, created_at, ticket_categories(name), ticket_subcategories(name)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
       supabase
         .from('maintenance_tickets')
-        .select('id, folio, type, status, servicio, descripcion, created_at, updated_at, encargado_nombre')
+        .select('id, folio, type, status, servicio, descripcion, created_at, encargado_nombre')
         .eq('user_id', user.id)
-        .eq('type', 'general')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('maintenance_tickets')
-        .select('id, folio, type, status, servicio, descripcion, created_at, updated_at, encargado_nombre')
-        .eq('user_id', user.id)
-        .eq('type', 'maquinaria')
         .order('created_at', { ascending: false }),
     ])
+
+  const generalTickets = (maintTickets ?? []).filter((t) => t.type === 'general')
+  const maqTickets     = (maintTickets ?? []).filter((t) => t.type === 'maquinaria')
 
   return (
     <main className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
@@ -53,6 +49,10 @@ export default async function MisTicketsPage() {
           sysTickets={(sysTickets ?? []) as unknown as Parameters<typeof MisTicketsTabs>[0]['sysTickets']}
           generalTickets={generalTickets ?? []}
           maqTickets={maqTickets ?? []}
+          canMaquinaria={
+            ((profile?.department as { allowed_ticket_types?: string[] | null } | null)
+              ?.allowed_ticket_types ?? ['general', 'maquinaria']).includes('maquinaria')
+          }
         />
     </main>
   )

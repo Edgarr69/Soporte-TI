@@ -18,7 +18,7 @@ import { formatDate, cn } from '@/lib/utils'
 interface TicketRow {
   id: string; folio: string; status: string; priority: string
   description: string; is_reopened: boolean
-  created_at: string; updated_at: string
+  created_at: string
   ticket_categories: { name: string } | null
   ticket_subcategories: { name: string } | null
   user: { full_name: string; email: string } | null

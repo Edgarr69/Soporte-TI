@@ -23,19 +23,23 @@ export default async function NuevoMantenimientoPage({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*, department:departments(id, name)')
+    .select('*, department:departments(id, name, allowed_ticket_types)')
     .eq('id', user.id)
     .single()
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
+
+  const dept = profile?.department as { id: string; name: string; allowed_ticket_types?: string[] | null } | null
+  if (tipo === 'maquinaria') {
+    const allowed = dept?.allowed_ticket_types ?? ['general', 'maquinaria']
+    if (!allowed.includes('maquinaria')) redirect('/mis-tickets')
+  }
 
   const [departments, areas, categories] = await Promise.all([
     getCachedDepartments(),
     getCachedAreas(),
     getCachedMaintenanceCategories(tipo),
   ])
-
-  const dept = profile?.department as { id: string; name: string } | null
 
   const tipoLabel = tipo === 'general' ? 'Mantenimiento General' : 'Mantenimiento de Maquinaria'
 

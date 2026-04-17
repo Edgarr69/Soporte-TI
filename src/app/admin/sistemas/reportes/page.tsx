@@ -14,10 +14,9 @@ export default async function AdminReportesPage() {
   const { data: tickets } = await supabase
     .from('tickets')
     .select(`
-      id, status, priority, is_reopened, created_at, resolved_at, closed_at,
+      id, priority, is_reopened, created_at,
       first_response_time_minutes, resolution_time_minutes,
       ticket_categories(name),
-      ticket_subcategories(name),
       user:profiles(full_name, email),
       department:departments(name)
     `)

@@ -148,9 +148,10 @@ export function AdminMaintenanceDetail({
   const [reassigning,        setReassigning]        = useState(false)
 
   // Upload / delete evidencia
-  const [uploading,      setUploading]      = useState(false)
-  const [generatingPdf,  setGeneratingPdf]  = useState(false)
-  const [deletingEvid,   setDeletingEvid]   = useState<string | null>(null)
+  const [uploading,        setUploading]        = useState(false)
+  const [generatingPdf,    setGeneratingPdf]    = useState(false)
+  const [deletingEvid,     setDeletingEvid]     = useState<string | null>(null)
+  const [unlockEvidEdit,   setUnlockEvidEdit]   = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const nextStatuses = MAINTENANCE_TRANSITIONS[ticket.status] ?? []
@@ -316,8 +317,13 @@ export function AdminMaintenanceDetail({
               </Button>
             )}
             {nextStatuses.includes('terminado') && (
-              <Button size="default" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm px-5"
-                onClick={() => transition('terminado')} disabled={transitioning}>
+              <Button
+                size="default"
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm px-5 disabled:opacity-50"
+                onClick={() => transition('terminado')}
+                disabled={transitioning || otherEvid.length === 0}
+                title={otherEvid.length === 0 ? 'Debes subir al menos una evidencia antes de marcar como terminado' : undefined}
+              >
                 <Check className="h-4 w-4 mr-2" />
                 Marcar terminado
               </Button>
@@ -572,25 +578,42 @@ export function AdminMaintenanceDetail({
                     {ev.file_name}
                   </a>
                   <span className="text-xs text-zinc-400 mr-1">{formatDate(ev.created_at)}</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
-                    disabled={deletingEvid === ev.id}
-                    onClick={() => handleDeleteEvidencia(ev.id)}
-                    title="Eliminar archivo"
-                  >
-                    <Trash2 className={`h-3 w-3 ${deletingEvid === ev.id ? 'animate-pulse' : ''}`} />
-                  </Button>
+                  {(ticket.status !== 'terminado' || unlockEvidEdit) && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                      disabled={deletingEvid === ev.id}
+                      onClick={() => handleDeleteEvidencia(ev.id)}
+                      title="Eliminar archivo"
+                    >
+                      <Trash2 className={`h-3 w-3 ${deletingEvid === ev.id ? 'animate-pulse' : ''}`} />
+                    </Button>
+                  )}
                 </div>
               ))}
+
+              {/* Corrección post-terminado */}
+              {ticket.status === 'terminado' && otherEvid.length > 0 && !unlockEvidEdit && (
+                <button
+                  className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 underline text-left"
+                  onClick={() => setUnlockEvidEdit(true)}
+                >
+                  ¿No subiste el documento correcto?
+                </button>
+              )}
+              {ticket.status === 'terminado' && unlockEvidEdit && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Modo corrección activo — puedes eliminar el archivo y subir uno nuevo.
+                </p>
+              )}
 
               {!canGeneratePdf && !pdfSistema && !otherEvid.length && (
                 <p className="text-xs text-zinc-400">Sin documentos.</p>
               )}
 
               {/* Subir evidencia: solo disponible después de que exista el PDF */}
-              {pdfSistema && (
+              {pdfSistema && (ticket.status !== 'terminado' || unlockEvidEdit) && (
                 <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
                   <input
                     ref={fileInputRef}
@@ -603,8 +626,8 @@ export function AdminMaintenanceDetail({
                     size="sm"
                     variant="outline"
                     className="w-full"
-                    disabled={uploading || pdfBlockedByReopen}
-                    title={pdfBlockedByReopen ? 'Asigna un técnico y fecha antes de subir' : undefined}
+                    disabled={uploading || (pdfBlockedByReopen && !unlockEvidEdit)}
+                    title={pdfBlockedByReopen && !unlockEvidEdit ? 'Asigna un técnico y fecha antes de subir' : undefined}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-3.5 w-3.5 mr-1.5" />

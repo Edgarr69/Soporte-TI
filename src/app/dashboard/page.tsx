@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardHero } from '@/components/dashboard/user-dashboard'
-import { isAdminAny, homePathForRole, type Role } from '@/lib/types'
+import { homePathForRole, type Role } from '@/lib/types'
 import type { ProfileExtended } from '@/lib/types'
 
 export default async function DashboardPage() {

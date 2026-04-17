@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   MAINTENANCE_STATUS_LABELS, MAINTENANCE_STATUS_COLORS,
   MAINTENANCE_TYPE_LABELS,

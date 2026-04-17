@@ -15,7 +15,7 @@ export default async function AdminTicketsPage() {
     .from('tickets')
     .select(`
       id, folio, status, priority, description, is_reopened,
-      created_at, updated_at, first_response_at, resolved_at,
+      created_at,
       ticket_categories(name),
       ticket_subcategories(name),
       user:profiles(full_name, email),
