@@ -206,7 +206,7 @@ const s = StyleSheet.create({
     border:    `1px solid ${BORDER}`,
     borderTop: 0,
     padding:   5,
-    flex:      1,  // llena el espacio restante de la página
+    minHeight: 60,
   },
   obsLabel: {
     fontFamily: 'Helvetica-Bold',
@@ -338,8 +338,8 @@ export function MaintenancePdfDocument({ data }: { data: MaintenancePdfData }) {
                   <Text style={s.dataLabel}>Servicio:</Text>
                   <Text style={s.dataValueFull}>{data.servicio}</Text>
                 </View>
-                {/* Descripción */}
-                <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5, flex: 1 }}>
+                {/* Descripción — sin flex:1 para que crezca con el texto */}
+                <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5 }}>
                   <Text style={s.descLabel}>Descripcion del servicio:</Text>
                   <Text style={s.descValue}>{data.descripcion}</Text>
                 </View>
@@ -371,8 +371,7 @@ export function MaintenancePdfDocument({ data }: { data: MaintenancePdfData }) {
             </View>
           ) : (
             /* ── SIN FOTO: layout original solo área/servicio/descripción ── */
-            <View style={{ flexDirection: 'row', minHeight: 100 }}>
-              <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'column' }}>
                 {/* Área */}
                 <View style={{ borderBottom: `1px solid ${BORDER}`, paddingVertical: 3, paddingHorizontal: 5 }}>
                   <Text style={s.dataLabel}>Area afectada:</Text>
@@ -383,12 +382,11 @@ export function MaintenancePdfDocument({ data }: { data: MaintenancePdfData }) {
                   <Text style={s.dataLabel}>Servicio:</Text>
                   <Text style={s.dataValueFull}>{data.servicio}</Text>
                 </View>
-                {/* Descripción */}
-                <View style={{ paddingVertical: 3, paddingHorizontal: 5, flex: 1 }}>
+                {/* Descripción — sin flex:1 para que crezca con el texto */}
+                <View style={{ paddingVertical: 3, paddingHorizontal: 5 }}>
                   <Text style={s.descLabel}>Descripcion del servicio:</Text>
                   <Text style={s.descValue}>{data.descripcion}</Text>
                 </View>
-              </View>
             </View>
           )}
         </View>

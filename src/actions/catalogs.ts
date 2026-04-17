@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath, revalidateTag } from 'next/cache'
 
+type Res = { error?: string; success?: boolean }
+
 const ALLOWED_ROLES = ['admin_mantenimiento', 'super_admin']
 
 async function checkAdminRole(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
@@ -12,13 +14,21 @@ async function checkAdminRole(supabase: Awaited<ReturnType<typeof createClient>>
   return true
 }
 
+function validateName(name: string): { error: string } | null {
+  const trimmed = name.trim()
+  if (!trimmed) return { error: 'El nombre no puede estar vacío' }
+  if (trimmed.length > 255) return { error: 'El nombre es demasiado largo (máx. 255 caracteres)' }
+  return null
+}
+
 // ─── Áreas ────────────────────────────────────────────────
 
-export async function createArea(name: string) {
+export async function createArea(name: string): Promise<Res> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
   if (!(await checkAdminRole(supabase, user.id))) return { error: 'Sin permiso' }
+  const nameErr = validateName(name); if (nameErr) return nameErr
 
   // Get next sort_order
   const { data: last } = await supabase
@@ -32,11 +42,12 @@ export async function createArea(name: string) {
   return { success: true }
 }
 
-export async function updateArea(id: string, name: string, is_active: boolean) {
+export async function updateArea(id: string, name: string, is_active: boolean): Promise<Res> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
   if (!(await checkAdminRole(supabase, user.id))) return { error: 'Sin permiso' }
+  const nameErr = validateName(name); if (nameErr) return nameErr
 
   const { error } = await supabase.from('areas').update({ name: name.trim(), is_active }).eq('id', id)
   if (error) return { error: error.message }
@@ -45,7 +56,7 @@ export async function updateArea(id: string, name: string, is_active: boolean) {
   return { success: true }
 }
 
-export async function deleteArea(id: string) {
+export async function deleteArea(id: string): Promise<Res> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
@@ -60,11 +71,12 @@ export async function deleteArea(id: string) {
 
 // ─── Categorías de mantenimiento ─────────────────────────
 
-export async function createMaintenanceCategory(name: string, type: 'general' | 'maquinaria') {
+export async function createMaintenanceCategory(name: string, type: 'general' | 'maquinaria'): Promise<Res> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
   if (!(await checkAdminRole(supabase, user.id))) return { error: 'Sin permiso' }
+  const nameErr = validateName(name); if (nameErr) return nameErr
 
   const { data: last } = await supabase
     .from('maintenance_categories')
@@ -84,11 +96,12 @@ export async function createMaintenanceCategory(name: string, type: 'general' | 
   return { success: true }
 }
 
-export async function updateMaintenanceCategory(id: string, name: string, is_active: boolean) {
+export async function updateMaintenanceCategory(id: string, name: string, is_active: boolean): Promise<Res> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
   if (!(await checkAdminRole(supabase, user.id))) return { error: 'Sin permiso' }
+  const nameErr = validateName(name); if (nameErr) return nameErr
 
   const { error } = await supabase
     .from('maintenance_categories')
@@ -102,7 +115,7 @@ export async function updateMaintenanceCategory(id: string, name: string, is_act
 
 // ─── Encargados de departamento ────────────────────────────
 
-export async function setDepartmentManager(department_id: string, manager_name: string) {
+export async function setDepartmentManager(department_id: string, manager_name: string): Promise<Res> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
@@ -110,6 +123,7 @@ export async function setDepartmentManager(department_id: string, manager_name: 
 
   const trimmedName = manager_name.trim()
   if (!trimmedName) return { error: 'El nombre del encargado no puede estar vacío' }
+  if (trimmedName.length > 255) return { error: 'El nombre es demasiado largo (máx. 255 caracteres)' }
 
   // Upsert: si ya hay default, actualizarlo; si no, crear
   const { data: existing } = await supabase
@@ -136,11 +150,12 @@ export async function setDepartmentManager(department_id: string, manager_name: 
 
 // ─── Subcategorías de maquinaria ──────────────────────────
 
-export async function createMachineSubcategory(categoryId: string, name: string) {
+export async function createMachineSubcategory(categoryId: string, name: string): Promise<Res> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
   if (!(await checkAdminRole(supabase, user.id))) return { error: 'Sin permiso' }
+  const nameErr = validateName(name); if (nameErr) return nameErr
 
   const { data: last } = await supabase
     .from('machine_subcategories')
@@ -159,11 +174,12 @@ export async function createMachineSubcategory(categoryId: string, name: string)
   return { success: true }
 }
 
-export async function updateMachineSubcategory(id: string, name: string, is_active: boolean) {
+export async function updateMachineSubcategory(id: string, name: string, is_active: boolean): Promise<Res> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
   if (!(await checkAdminRole(supabase, user.id))) return { error: 'Sin permiso' }
+  const nameErr = validateName(name); if (nameErr) return nameErr
 
   const { error } = await supabase
     .from('machine_subcategories')
@@ -174,7 +190,7 @@ export async function updateMachineSubcategory(id: string, name: string, is_acti
   return { success: true }
 }
 
-export async function deleteMachineSubcategory(id: string) {
+export async function deleteMachineSubcategory(id: string): Promise<Res> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }

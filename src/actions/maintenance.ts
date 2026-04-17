@@ -116,11 +116,13 @@ export async function createMaintenanceTicket(formData: FormData) {
 
   // Subir foto si la hay y obtener data URL para el PDF
   let photoUrl: string | null = null
-  if (photoFile && photoFile.size > 0) {
+  const PHOTO_ALLOWED_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  if (photoFile && photoFile.size > 0 && PHOTO_ALLOWED_MIMES.includes(photoFile.type) && photoFile.size <= 10 * 1024 * 1024) {
     try {
-      const ext      = photoFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+      const ext       = photoFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
       const photoPath = `maintenance/${ticket.id}/evidencia-${crypto.randomUUID()}.${ext}`
-      const buf      = Buffer.from(await photoFile.arrayBuffer())
+      const safeName  = path.basename(photoFile.name).slice(0, 255)
+      const buf       = Buffer.from(await photoFile.arrayBuffer())
 
       const { error: photoUploadErr } = await serviceClient.storage
         .from('maintenance-docs')
@@ -130,7 +132,7 @@ export async function createMaintenanceTicket(formData: FormData) {
         await serviceClient.from('maintenance_evidencias').insert({
           ticket_id:   ticket.id,
           uploaded_by: user.id,
-          file_name:   photoFile.name,
+          file_name:   safeName,
           file_path:   photoPath,
           file_size:   photoFile.size,
           mime_type:   photoFile.type,
@@ -364,19 +366,18 @@ export async function addMaintenanceComment(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const { data: ticket } = await supabase
-    .from('maintenance_tickets')
-    .select('user_id, folio')
-    .eq('id', ticketId)
-    .single()
+  const [{ data: ticket }, { data: profile }] = await Promise.all([
+    supabase.from('maintenance_tickets').select('user_id, folio').eq('id', ticketId).single(),
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+  ])
   if (!ticket) return { error: 'No encontrado' }
 
-  // Solo admins pueden enviar comentarios internos
-  if (isInternal) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (!profile || !['admin_mantenimiento', 'super_admin'].includes(profile.role))
-      return { error: 'Sin permiso para comentarios internos' }
-  }
+  const isAdmin   = ['admin_mantenimiento', 'super_admin'].includes(profile?.role ?? '')
+  const isTecnico = profile?.role === 'tecnico_mantenimiento'
+  const isOwner   = ticket.user_id === user.id
+
+  if (!isOwner && !isAdmin && !isTecnico) return { error: 'Sin permiso' }
+  if (isInternal && !isAdmin) return { error: 'Sin permiso para comentarios internos' }
 
   const { error } = await supabase.from('maintenance_comments').insert({
     ticket_id:   ticketId,
@@ -386,7 +387,7 @@ export async function addMaintenanceComment(
   })
   if (error) return { error: error.message }
 
-  if (!isInternal && ticket.user_id !== user.id) {
+  if (!isInternal && !isOwner) {
     await supabase.from('notifications').insert({
       user_id:   ticket.user_id,
       ticket_id: null,
@@ -440,6 +441,10 @@ export async function cancelMaintenanceTicket(ticketId: string, reason?: string)
 
 // ─── Subir evidencia ──────────────────────────────────────
 
+const EVIDENCIA_ALLOWED_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf']
+const EVIDENCIA_MAX_SIZE      = 10 * 1024 * 1024 // 10 MB
+const EVIDENCIA_MAX_FILES     = 5
+
 export async function uploadEvidencia(
   ticketId: string,
   formData: FormData
@@ -448,13 +453,28 @@ export async function uploadEvidencia(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const files = formData.getAll('files') as File[]
-  if (!files.length) return { error: 'Sin archivos' }
+  const [{ data: ticket }, { data: profile }] = await Promise.all([
+    supabase.from('maintenance_tickets').select('user_id').eq('id', ticketId).single(),
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+  ])
+  if (!ticket) return { error: 'Solicitud no encontrada' }
+
+  const isAdmin = ['admin_mantenimiento', 'super_admin'].includes(profile?.role ?? '')
+  if (ticket.user_id !== user.id && !isAdmin) return { error: 'Sin permiso' }
+
+  const allFiles = formData.getAll('files') as File[]
+  if (!allFiles.length) return { error: 'Sin archivos' }
+
+  const files = allFiles.slice(0, EVIDENCIA_MAX_FILES)
 
   const results: string[] = []
   for (const file of files) {
+    if (!EVIDENCIA_ALLOWED_MIMES.includes(file.type)) continue
+    if (file.size > EVIDENCIA_MAX_SIZE) continue
+
     const ext      = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
     const filePath = `maintenance/${ticketId}/evidencia-${crypto.randomUUID()}.${ext}`
+    const safeName = path.basename(file.name).slice(0, 255)
 
     const arrayBuffer = await file.arrayBuffer()
     const { error: upErr } = await supabase.storage
@@ -466,7 +486,7 @@ export async function uploadEvidencia(
     await supabase.from('maintenance_evidencias').insert({
       ticket_id:   ticketId,
       uploaded_by: user.id,
-      file_name:   file.name,
+      file_name:   safeName,
       file_path:   filePath,
       file_size:   file.size,
       mime_type:   file.type,

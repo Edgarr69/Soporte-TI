@@ -29,8 +29,9 @@ export default async function MantenimientoDetailPage({
     .eq('id', id)
     .single()
 
-  // Users can only see their own tickets (admins use the admin routes)
-  if (!ticket || (ticket.user_id !== user.id && profile.role === 'usuario')) notFound()
+  // Solo el dueño del ticket puede acceder — admins usan /admin/mantenimiento/tickets/[id]
+  const isAdmin = ['admin_mantenimiento', 'super_admin'].includes(profile.role)
+  if (!ticket || (ticket.user_id !== user.id && !isAdmin)) notFound()
 
   const [{ data: statusHistory }, { data: comments }] =
     await Promise.all([
