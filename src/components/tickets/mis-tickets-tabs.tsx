@@ -41,20 +41,23 @@ export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets, canMaqu
     <Tabs defaultValue={defaultTab}>
       <TabsList className="mb-4 w-full sm:w-auto overflow-x-auto">
         <TabsTrigger value="sistemas" className="gap-1.5">
-          <Monitor className="h-3.5 w-3.5" />
+          <Monitor aria-hidden="true" className="h-3.5 w-3.5" />
           Sistemas
-          <Badge variant="outline" className="ml-1 text-xs px-1.5 py-0 h-4">{sysTickets.length}</Badge>
+          <Badge variant="outline" aria-hidden="true" className="ml-1 text-xs px-1.5 py-0 h-4">{sysTickets.length}</Badge>
+          <span className="sr-only">({sysTickets.length})</span>
         </TabsTrigger>
         <TabsTrigger value="general" className="gap-1.5">
-          <Wrench className="h-3.5 w-3.5" />
+          <Wrench aria-hidden="true" className="h-3.5 w-3.5" />
           Mant. General
-          <Badge variant="outline" className="ml-1 text-xs px-1.5 py-0 h-4">{generalTickets.length}</Badge>
+          <Badge variant="outline" aria-hidden="true" className="ml-1 text-xs px-1.5 py-0 h-4">{generalTickets.length}</Badge>
+          <span className="sr-only">({generalTickets.length})</span>
         </TabsTrigger>
         {canMaquinaria && (
           <TabsTrigger value="maquinaria" className="gap-1.5">
-            <Wrench className="h-3.5 w-3.5" />
+            <Wrench aria-hidden="true" className="h-3.5 w-3.5" />
             Maquinaria
-            <Badge variant="outline" className="ml-1 text-xs px-1.5 py-0 h-4">{maqTickets.length}</Badge>
+            <Badge variant="outline" aria-hidden="true" className="ml-1 text-xs px-1.5 py-0 h-4">{maqTickets.length}</Badge>
+            <span className="sr-only">({maqTickets.length})</span>
           </TabsTrigger>
         )}
       </TabsList>
@@ -68,7 +71,7 @@ export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets, canMaqu
           items={sysTickets}
           empty="No tienes tickets de sistemas."
           renderItem={(t) => (
-            <Link key={t.id} href={`/tickets/${t.id}`}>
+            <Link key={t.id} href={`/tickets/${t.id}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
               <Card className="border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
                 <CardContent className="py-3 px-4">
                   <div className="flex items-start justify-between gap-3">
@@ -133,7 +136,7 @@ function TicketListSection<T>({
     return (
       <Card className="border-dashed border-zinc-200 dark:border-zinc-800">
         <CardContent className="py-12 text-center">
-          <Ticket className="h-8 w-8 text-zinc-300 dark:text-zinc-600 mx-auto mb-2" />
+          <Ticket aria-hidden="true" className="h-8 w-8 text-zinc-300 dark:text-zinc-600 mx-auto mb-2" />
           <p className="text-sm text-zinc-500">{empty}</p>
         </CardContent>
       </Card>
@@ -148,7 +151,7 @@ function MaintListSection({ items, empty }: { items: MaintRow[]; empty: string }
       items={items}
       empty={empty}
       renderItem={(t) => (
-        <Link key={t.id} href={`/mantenimiento/${t.id}`}>
+        <Link key={t.id} href={`/mantenimiento/${t.id}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
           <Card className="border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
             <CardContent className="py-3 px-4">
               <div className="flex items-start justify-between gap-3">

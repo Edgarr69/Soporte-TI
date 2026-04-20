@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { motion, useAnimationControls } from 'framer-motion'
+import { motion, useAnimationControls, useReducedMotion } from 'framer-motion'
 import {
   LayoutDashboard, Monitor, Wrench, Settings, Users,
   BarChart3, ShieldCheck, History, Ticket, Bell, LogOut, HardHat,
@@ -107,6 +107,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
   const [isOpen, setIsOpen]           = useState(false)
   const containerControls             = useAnimationControls()
   const svgControls                   = useAnimationControls()
+  const prefersReducedMotion          = useReducedMotion()
   const sidebarRef                    = useRef<HTMLElement>(null)
   const toggleBlockRef                = useRef(false)
   const pathname                      = usePathname()
@@ -115,9 +116,14 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
   const items                         = itemsForRole(role)
 
   useEffect(() => {
-    containerControls.start(isOpen ? 'open' : 'close')
-    svgControls.start(isOpen ? 'open' : 'close')
-  }, [isOpen, containerControls, svgControls])
+    if (prefersReducedMotion) {
+      containerControls.set(isOpen ? 'open' : 'close')
+      svgControls.set(isOpen ? 'open' : 'close')
+    } else {
+      containerControls.start(isOpen ? 'open' : 'close')
+      svgControls.start(isOpen ? 'open' : 'close')
+    }
+  }, [isOpen, containerControls, svgControls, prefersReducedMotion])
 
 
   useEffect(() => {
@@ -151,8 +157,9 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
   return (
     <>
       {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 sm:hidden"
+        <button
+          aria-label="Cerrar navegación"
+          className="fixed inset-0 z-40 bg-black/40 sm:hidden cursor-default"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -161,6 +168,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
         variants={containerVariants}
         animate={containerControls}
         initial="close"
+        aria-label="Navegación principal"
         className={`fixed flex flex-col rounded-r-xl z-50 gap-16 p-3 md:p-4 top-0 left-0 h-dvh overflow-hidden
           shadow backdrop-blur-sm backdrop-saturate-150
           bg-background/60 dark:bg-default-100/50
@@ -229,8 +237,11 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
         {/* Animated arrow */}
         <Tooltip placement="right" content={isOpen ? 'Cerrar' : 'Abrir'}>
           <button
-            className="p-1 rounded-full flex-shrink-0"
+            className="p-1 rounded-full flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             onClick={() => setIsOpen((v) => !v)}
+            aria-label={isOpen ? 'Cerrar navegación' : 'Abrir navegación'}
+            aria-expanded={isOpen}
+            aria-controls="sidebar-nav"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -239,6 +250,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
               strokeWidth={1.5}
               stroke="currentColor"
               className="size-5 md:size-6"
+              aria-hidden="true"
             >
               <motion.path
                 strokeLinecap="round"
@@ -254,7 +266,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
       </div>
 
       {/* ─── Nav items ─── */}
-      <div className="flex flex-col flex-grow basis-0 gap-1">
+      <div id="sidebar-nav" className="flex flex-col flex-grow basis-0 gap-1">
         {items.map(({ href, icon: Icon, label, badge }) => {
           const active = isNavActive(href, pathname)
           const hasUnread = badge && adminUnreadCount > 0
@@ -263,15 +275,18 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
             <Link
               key={href}
               href={href}
+              aria-label={hasUnread ? `${label} — ${adminUnreadCount} sin leer` : undefined}
+              aria-current={active ? 'page' : undefined}
               className={`overflow-hidden whitespace-nowrap tracking-wide flex gap-3 items-center
                 cursor-pointer rounded-lg py-2 transition-colors
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1
                 ${isOpen ? 'px-2' : 'justify-center px-0'}
                 ${active
                   ? 'text-blue-500 dark:text-blue-400 font-semibold'
                   : 'text-zinc-500 dark:text-white hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/60 dark:hover:bg-white/10'
                 }`}
             >
-              <div className="relative flex-shrink-0">
+              <div className="relative flex-shrink-0" aria-hidden="true">
                 <Icon size={18} />
                 {hasUnread && !isOpen && (
                   <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500" />
@@ -281,7 +296,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
                 <span className="flex-1 text-sm truncate">
                   {label}
                   {hasUnread && (
-                    <span className="ml-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-bold text-white">
+                    <span aria-hidden="true" className="ml-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-bold text-white">
                       {adminUnreadCount > 99 ? '99+' : adminUnreadCount}
                     </span>
                   )}

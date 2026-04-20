@@ -92,7 +92,7 @@ function ActionCard({
         'hover:-translate-y-0.5',
       )}>
         {/* Icono */}
-        <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110', iconBg)}>
+        <div aria-hidden="true" className={cn('w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110', iconBg)}>
           <Icon className={cn('h-5 w-5', iconColor)} />
         </div>
 
@@ -105,7 +105,7 @@ function ActionCard({
         {/* CTA */}
         <div className="flex items-center gap-1.5 text-sm font-medium text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
           Crear solicitud
-          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </div>
       </div>
     </Link>

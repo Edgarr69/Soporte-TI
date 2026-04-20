@@ -114,13 +114,13 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           <div className="space-y-1.5">
-            <Label>Categoría *</Label>
+            <Label htmlFor="select-categoria">Categoría *</Label>
             <Select
               value={categoryId}
               onValueChange={(v) => { if (v !== null) { setCategoryId(v); setSubcategoryId('') } }}
               disabled={loading}
             >
-              <SelectTrigger>
+              <SelectTrigger id="select-categoria">
                 <SelectValue placeholder="Selecciona una categoría">
                   {categoryId ? categories.find((c) => c.id === categoryId)?.name : undefined}
                 </SelectValue>
@@ -135,13 +135,13 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
 
           {categoryId && hasSubcategories && (
             <div className="space-y-1.5">
-              <Label>Subcategoría *</Label>
+              <Label htmlFor="select-subcategoria">Subcategoría *</Label>
               <Select
                 value={subcategoryId}
                 onValueChange={(v) => v !== null && setSubcategoryId(v)}
                 disabled={loading}
               >
-                <SelectTrigger>
+                <SelectTrigger id="select-subcategoria">
                   <SelectValue placeholder="Selecciona una subcategoría">
                     {subcategoryId ? filteredSubs.find((s) => s.id === subcategoryId)?.name : undefined}
                   </SelectValue>
@@ -164,6 +164,9 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
         </CardHeader>
         <CardContent className="pt-0 space-y-2">
           <Textarea
+            id="descripcion"
+            name="descripcion"
+            aria-describedby="descripcion-hint descripcion-contador"
             placeholder="Describe detalladamente qué sucede, desde cuándo ocurre, qué mensajes de error aparecen, qué acciones tomaste y cualquier otro detalle relevante..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -172,11 +175,15 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
             className="resize-none"
           />
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 text-xs text-zinc-400">
-              <Info className="h-3 w-3" />
+            <div id="descripcion-hint" className="flex items-center gap-1 text-xs text-zinc-400">
+              <Info aria-hidden="true" className="h-3 w-3" />
               <span>Mínimo 30 caracteres. Sé lo más específico posible.</span>
             </div>
-            <span className={cn('text-xs', description.length < 30 ? 'text-red-500' : 'text-zinc-400')}>
+            <span
+              id="descripcion-contador"
+              aria-live="polite"
+              className={cn('text-xs', description.length < 30 ? 'text-red-500' : 'text-zinc-400')}
+            >
               {description.length} / 30 mín.
             </span>
           </div>
@@ -190,13 +197,13 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
         </CardHeader>
         <CardContent className="space-y-5 pt-0">
           <div className="space-y-1.5">
-            <Label>¿El problema te impide trabajar? *</Label>
+            <Label htmlFor="select-bloqueo">¿El problema te impide trabajar? *</Label>
             <Select
               value={blocking}
               onValueChange={(v) => v !== null && setBlocking(v as typeof blocking)}
               disabled={loading}
             >
-              <SelectTrigger>
+              <SelectTrigger id="select-bloqueo">
                 <SelectValue placeholder="Selecciona una opción">
                   {blocking ? BLOCKING_OPTIONS.find((o) => o.value === blocking)?.label : undefined}
                 </SelectValue>
@@ -210,13 +217,13 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>¿A quién afecta el problema? *</Label>
+            <Label htmlFor="select-alcance">¿A quién afecta el problema? *</Label>
             <Select
               value={scope}
               onValueChange={(v) => v !== null && setScope(v as typeof scope)}
               disabled={loading}
             >
-              <SelectTrigger>
+              <SelectTrigger id="select-alcance">
                 <SelectValue placeholder="Selecciona una opción">
                   {scope ? SCOPE_OPTIONS.find((o) => o.value === scope)?.label : undefined}
                 </SelectValue>
@@ -230,13 +237,13 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>¿Tienes alguna alternativa temporal para seguir trabajando? *</Label>
+            <Label htmlFor="select-alternativa">¿Tienes alguna alternativa temporal para seguir trabajando? *</Label>
             <Select
               value={workaround}
               onValueChange={(v) => v !== null && setWorkaround(v as typeof workaround)}
               disabled={loading}
             >
-              <SelectTrigger>
+              <SelectTrigger id="select-alternativa">
                 <SelectValue placeholder="Selecciona una opción">
                   {workaround === 'yes' ? 'Sí, tengo una alternativa' : workaround === 'no' ? 'No, no tengo alternativa' : undefined}
                 </SelectValue>
@@ -262,7 +269,7 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
           Cancelar
         </Button>
         <Button type="submit" className="flex-1" disabled={!isValid || loading}>
-          {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {loading && <Loader2 aria-hidden="true" className="h-4 w-4 mr-2 animate-spin" />}
           {loading ? 'Enviando...' : 'Enviar ticket'}
         </Button>
       </div>

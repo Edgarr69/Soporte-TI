@@ -69,7 +69,7 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
     <Card className="border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-zinc-950/50">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <User className="h-5 w-5 text-zinc-500" />
+          <User aria-hidden="true" className="h-5 w-5 text-zinc-500" />
           <CardTitle className="text-lg">Completa tu perfil</CardTitle>
         </div>
         <CardDescription>Correo: {userEmail}</CardDescription>
@@ -80,6 +80,7 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
             <Label htmlFor="fullName">Nombre completo con apellidos *</Label>
             <Input
               id="fullName"
+              autoComplete="name"
               placeholder="Ej. María García López"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -88,13 +89,13 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
           </div>
 
           <div className="space-y-1.5">
-            <Label>Departamento *</Label>
+            <Label htmlFor="select-departamento">Departamento *</Label>
             <Select
               value={deptId}
               onValueChange={(v) => { if (v !== null) setDeptId(v) }}
               disabled={loading}
             >
-              <SelectTrigger>
+              <SelectTrigger id="select-departamento">
                 <SelectValue placeholder="Selecciona departamento">
                   {deptId ? departments.find((d) => d.id === deptId)?.name : undefined}
                 </SelectValue>
@@ -126,7 +127,7 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
             className="w-full"
             disabled={loading || !fullName.trim() || !deptId || !encargado.trim()}
           >
-            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {loading && <Loader2 aria-hidden="true" className="h-4 w-4 mr-2 animate-spin" />}
             {loading ? 'Guardando...' : 'Continuar al sistema'}
           </Button>
         </form>

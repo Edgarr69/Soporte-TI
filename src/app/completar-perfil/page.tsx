@@ -40,7 +40,7 @@ export default async function CompleteProfilePage() {
         <div className="text-center space-y-2">
           <div className="flex justify-center">
             <div className="p-3 bg-zinc-900 dark:bg-zinc-100 rounded-2xl">
-              <Headphones className="h-7 w-7 text-zinc-100 dark:text-zinc-900" />
+              <Headphones aria-hidden="true" className="h-7 w-7 text-zinc-100 dark:text-zinc-900" />
             </div>
           </div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Bienvenido al sistema</h1>

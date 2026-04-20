@@ -42,6 +42,9 @@ next-env.d.ts
 
 # Claude
 CLAUDE.md
+.claude/
+.agents/
+skills-lock.json
 
 # Archivos de contexto local (uso interno, no van al repo)
 docs/
