@@ -11,7 +11,7 @@ const toggleVariants = {
 }
 
 export function ThemeToggleSlide({ isOpen }: { isOpen: boolean }) {
-  const { theme, setTheme }           = useTheme()
+  const { resolvedTheme, setTheme }   = useTheme()
   const [mounted, setMounted]         = useState(false)
   const [isTooltipOpen, setIsTooltipOpen] = useState(false)
   const prefersReducedMotion          = useReducedMotion()
@@ -21,7 +21,7 @@ export function ThemeToggleSlide({ isOpen }: { isOpen: boolean }) {
 
   if (!mounted) return null
 
-  const isLight    = theme === 'light'
+  const isLight    = resolvedTheme === 'light'
   const transition = prefersReducedMotion ? { duration: 0 } : { duration: 0.5, ease: 'easeInOut' as const }
 
   return (

@@ -70,3 +70,16 @@ export const getCachedMaintenanceCategories = unstable_cache(
   ['maintenance-categories'],
   { revalidate: 3600, tags: ['maintenance-categories'] },
 )
+
+export const getCachedTechnicians = unstable_cache(
+  async () => {
+    const { data } = await getClient()
+      .from('profiles')
+      .select('id, email, full_name, created_at')
+      .eq('role', 'tecnico_mantenimiento')
+      .order('full_name')
+    return data ?? []
+  },
+  ['technicians'],
+  { revalidate: 3600, tags: ['technicians'] },
+)

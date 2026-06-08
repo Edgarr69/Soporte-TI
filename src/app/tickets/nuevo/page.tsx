@@ -1,22 +1,15 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { NewTicketForm } from '@/components/tickets/new-ticket-form'
 import { getCachedTicketCategories, getCachedTicketSubcategories } from '@/lib/catalog-cache'
 import { LinkButton } from '@/components/ui/link-button'
 import { ChevronLeft } from 'lucide-react'
+import { getAuthedProfile } from '@/lib/auth'
 
 export default async function NewTicketPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, department:departments(id, name)')
-    .eq('id', user.id)
-    .single()
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
 

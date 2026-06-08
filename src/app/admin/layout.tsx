@@ -1,22 +1,14 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AppSidebar } from '@/components/shared/app-sidebar'
 import { TopBar } from '@/components/shared/top-bar'
+import { getAuthedProfile } from '@/lib/auth'
 import { isAdminAny, type Role } from '@/lib/types'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, department:departments(id, name)')
-    .eq('id', user.id)
-    .single()
-
   if (!profile || !isAdminAny(profile.role as Role)) redirect('/dashboard')
 
   const { data: adminUnreadData } = await supabase.rpc('get_admin_unread_count')

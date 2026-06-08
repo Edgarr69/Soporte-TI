@@ -1,20 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { isAdminAny, type Role, type AdminNotification, type AdminNotificationType } from '@/lib/types'
 import { AdminNotificationList } from '@/components/admin/admin-notification-list'
+import { getAuthedProfile } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminHistorialPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
 
   if (!profile || !isAdminAny(profile.role as Role)) redirect('/dashboard')
 

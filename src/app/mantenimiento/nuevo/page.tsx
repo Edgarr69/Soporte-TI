@@ -1,12 +1,12 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { MaintenanceForm } from '@/components/mantenimiento/maintenance-form'
 import { getCachedDepartments, getCachedAreas, getCachedMaintenanceCategories } from '@/lib/catalog-cache'
 import { LinkButton } from '@/components/ui/link-button'
 import { ChevronLeft } from 'lucide-react'
 import type { MaintenanceType } from '@/lib/types'
+import { getAuthedProfile } from '@/lib/auth'
 
 export default async function NuevoMantenimientoPage({
   searchParams,
@@ -17,15 +17,8 @@ export default async function NuevoMantenimientoPage({
   const tipo = (params.tipo ?? 'general') as MaintenanceType
   if (tipo !== 'general' && tipo !== 'maquinaria') notFound()
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, department:departments(id, name, allowed_ticket_types)')
-    .eq('id', user.id)
-    .single()
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
 

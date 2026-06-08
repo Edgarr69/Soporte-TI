@@ -1,28 +1,16 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminReportsView } from '@/components/admin/admin-reports'
+import { getCachedAllSistemasTickets } from '@/lib/admin-dashboard-cache'
+import { getAuthedProfile } from '@/lib/auth'
 
 export default async function AdminReportesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (!profile || !['admin_sistemas', 'super_admin'].includes(profile.role)) redirect('/dashboard')
 
-  const { data: tickets } = await supabase
-    .from('tickets')
-    .select(`
-      id, priority, is_reopened, created_at,
-      first_response_time_minutes, resolution_time_minutes,
-      ticket_categories(name),
-      user:profiles(full_name, email),
-      department:departments(name)
-    `)
-    .order('created_at', { ascending: false })
-
-  const all = tickets ?? []
+  const all = await getCachedAllSistemasTickets()
 
   // Por mes
   const monthMap = new Map<string, number>()

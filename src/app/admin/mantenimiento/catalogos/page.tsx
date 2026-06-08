@@ -1,16 +1,13 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CatalogsView } from '@/components/mantenimiento/catalogs-view'
+import { getAuthedProfile } from '@/lib/auth'
 
 export default async function CatalogosPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single()
   if (!profile || !['admin_mantenimiento', 'super_admin'].includes(profile.role))
     redirect('/dashboard')
 

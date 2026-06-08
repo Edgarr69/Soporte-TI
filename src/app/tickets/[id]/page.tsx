@@ -1,22 +1,15 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { TicketDetail } from '@/components/tickets/ticket-detail'
+import { getAuthedProfile } from '@/lib/auth'
 
 interface Props { params: Promise<{ id: string }> }
 
 export default async function TicketDetailPage({ params }: Props) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, department:departments(id, name)')
-    .eq('id', user.id)
-    .single()
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
 

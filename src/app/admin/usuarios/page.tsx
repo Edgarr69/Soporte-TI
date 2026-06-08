@@ -1,16 +1,12 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { UsersView } from '@/components/admin/users-view'
+import { getAuthedProfile } from '@/lib/auth'
 
 export default async function AdminUsuariosPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single()
 
   const allowed = ['super_admin', 'admin_sistemas', 'admin_mantenimiento']
   if (!profile || !allowed.includes(profile.role)) redirect('/dashboard')

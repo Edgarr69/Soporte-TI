@@ -1,29 +1,16 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminDashboardView } from '@/components/admin/admin-dashboard'
+import { getCachedAllSistemasTickets } from '@/lib/admin-dashboard-cache'
+import { getAuthedProfile } from '@/lib/auth'
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (!profile || !['admin_sistemas', 'super_admin'].includes(profile.role)) redirect('/dashboard')
 
-  // Todos los tickets
-  const { data: tickets } = await supabase
-    .from('tickets')
-    .select(`
-      id, folio, status, priority, is_reopened, created_at,
-      first_response_time_minutes, resolution_time_minutes,
-      ticket_categories(name),
-      department:departments(name),
-      user:profiles(full_name, email)
-    `)
-    .order('created_at', { ascending: false })
-
-  const all = tickets ?? []
+  const all = await getCachedAllSistemasTickets()
 
   // Un solo loop para métricas, mapas y tendencia
   let abierto = 0, en_proceso = 0, en_espera = 0, resuelto = 0, cerrado = 0, reabierto = 0

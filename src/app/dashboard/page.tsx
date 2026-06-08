@@ -1,21 +1,14 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardHero } from '@/components/dashboard/user-dashboard'
+import { getAuthedProfile } from '@/lib/auth'
 import { homePathForRole, type Role } from '@/lib/types'
 import type { ProfileExtended } from '@/lib/types'
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, department:departments(id, name, allowed_ticket_types)')
-    .eq('id', user.id)
-    .single()
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
   if (profile.role !== 'usuario') redirect(homePathForRole(profile.role as Role))

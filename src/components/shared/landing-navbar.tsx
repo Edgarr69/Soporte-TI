@@ -12,13 +12,13 @@ import { LoginModal } from '@/components/auth/login-modal'
 
 // ThemeToggle animado
 function ThemeToggleIcon() {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const [mounted, setMounted]  = useState(false)
   const prefersReducedMotion   = useReducedMotion()
   useEffect(() => setMounted(true), [])
   if (!mounted) return <div className="size-4" />
 
-  const isLight = theme === 'light'
+  const isLight = resolvedTheme === 'light'
   const iconVariants = {
     visible: { opacity: 1, scale: 1,   rotate: 0   },
     hidden:  { opacity: 0, scale: 0.5, rotate: 180 },
@@ -46,7 +46,7 @@ function ThemeToggleIcon() {
 const PILL = 'gap-4 py-2 rounded-full border-small border-default-200/20 bg-background/60 px-2 shadow-medium backdrop-blur-sm backdrop-saturate-150 dark:bg-default-100/50'
 
 export function LandingNavbar() {
-  const { theme, setTheme }     = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
   const [isLoginOpen, setIsLoginOpen] = useState(false)
 
   return (
@@ -90,8 +90,8 @@ export function LandingNavbar() {
               isIconOnly
               variant="solid"
               className="bg-transparent size-10 md:size-7"
-              aria-label={theme === 'light' ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro'}
-              onPress={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              aria-label={resolvedTheme === 'light' ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro'}
+              onPress={() => setTheme(resolvedTheme === 'light' ? 'dark' : 'light')}
             >
               <ThemeToggleIcon />
             </Button>

@@ -1,19 +1,12 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { homePathForRole, type Role } from '@/lib/types'
+import { getAuthedProfile } from '@/lib/auth'
 
 export default async function AdminRootPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
 
   const role = (profile?.role ?? 'usuario') as Role
 

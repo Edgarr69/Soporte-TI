@@ -1,8 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { revalidatePath } from 'next/cache'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import type { Role } from '@/lib/types'
 import { createAdminNotification } from '@/actions/admin-notifications'
 
@@ -28,13 +28,9 @@ export async function createUser(data: {
     return { error: 'Sin permiso' }
 
   // Use service role client for admin operations
-  const serviceUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-  if (!serviceKey) return { error: 'Configuración de servidor incompleta' }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { error: 'Configuración de servidor incompleta' }
 
-  const adminSupabase = createAdminClient(serviceUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const adminSupabase = createAdminClient()
 
   // Create auth user
   const { data: newUser, error: createErr } = await adminSupabase.auth.admin.createUser({
@@ -80,6 +76,7 @@ export async function createUser(data: {
   })
 
   revalidatePath('/admin/usuarios')
+  revalidateTag('technicians', {})
   return { success: true, userId: newUser.user.id }
 }
 
@@ -116,13 +113,9 @@ export async function updateUserRole(targetUserId: string, newRole: Role) {
   }
 
   // Usar service role para saltarse RLS en profiles
-  const serviceUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-  if (!serviceKey) return { error: 'Configuración de servidor incompleta' }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { error: 'Configuración de servidor incompleta' }
 
-  const adminSupabase = createAdminClient(serviceUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const adminSupabase = createAdminClient()
 
   const { error } = await adminSupabase
     .from('profiles')
@@ -150,6 +143,7 @@ export async function updateUserRole(targetUserId: string, newRole: Role) {
   })
 
   revalidatePath('/admin/usuarios')
+  revalidateTag('technicians', {})
   return { success: true }
 }
 
@@ -169,18 +163,15 @@ export async function deleteUser(targetUserId: string) {
 
   if (targetUserId === user.id) return { error: 'No puedes eliminarte a ti mismo' }
 
-  const serviceUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-  if (!serviceKey) return { error: 'Configuración de servidor incompleta' }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { error: 'Configuración de servidor incompleta' }
 
-  const adminSupabase = createAdminClient(serviceUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const adminSupabase = createAdminClient()
 
   const { error } = await adminSupabase.auth.admin.deleteUser(targetUserId)
   if (error) return { error: error.message }
 
   revalidatePath('/admin/mantenimiento/tecnicos')
   revalidatePath('/admin/usuarios')
+  revalidateTag('technicians', {})
   return { success: true }
 }

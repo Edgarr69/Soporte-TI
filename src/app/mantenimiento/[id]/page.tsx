@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { MaintenanceDetail } from '@/components/mantenimiento/maintenance-detail'
+import { getAuthedProfile } from '@/lib/auth'
 
 export default async function MantenimientoDetailPage({
   params,
@@ -11,15 +11,8 @@ export default async function MantenimientoDetailPage({
 }) {
   const { id } = await params
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, department:departments(id, name)')
-    .eq('id', user.id)
-    .single()
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
 
