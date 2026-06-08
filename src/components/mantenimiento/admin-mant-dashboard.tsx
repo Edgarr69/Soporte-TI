@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -40,6 +40,8 @@ const STATUS_COLORS: Record<string, string> = {
   cancelado:   '#ef4444',
 }
 
+const DATE_RANGE_STORAGE_KEY = 'admin-mant-dashboard-date-range'
+
 const AREA_PALETTE  = ['#6366f1','#818cf8','#a5b4fc','#38bdf8','#7dd3fc','#bae6fd','#34d399']
 const TEC_PALETTE   = ['#10b981','#34d399','#6ee7b7','#059669','#047857','#065f46','#064e3b']
 
@@ -66,6 +68,33 @@ export function AdminMantenimientoDashboard({ tickets }: Props) {
   // El backend solo trae los últimos 12 meses — el primer ticket (orden ascendente)
   // marca el límite real de datos disponibles para no sugerir rangos vacíos
   const minDate = tickets[0]?.created_at.slice(0, 10) ?? defaultFrom
+
+  // Restaura el último rango de fechas elegido (persiste entre visitas al panel).
+  // Se hace en un efecto — no en el estado inicial — para no desincronizar el
+  // primer render del servidor (que siempre usa los últimos 30 días) del cliente
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DATE_RANGE_STORAGE_KEY)
+      if (!saved) return
+      const { from, to } = JSON.parse(saved) as { from?: string; to?: string }
+      if (!from || !to) return
+      const f = from < minDate ? minDate : from > today ? today : from
+      const t = to > today ? today : to < f ? f : to
+      setFromDate(f)
+      setToDate(t)
+    } catch {
+      // localStorage no disponible o datos corruptos — se mantiene el rango por defecto
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DATE_RANGE_STORAGE_KEY, JSON.stringify({ from: fromDate, to: toDate }))
+    } catch {
+      // localStorage no disponible (modo privado, cuota llena, etc.) — no es crítico
+    }
+  }, [fromDate, toDate])
 
   function handleFromChange(val: string) {
     setFromDate(val)
