@@ -11,6 +11,7 @@ import {
 } from '@/lib/types'
 import { cn, formatRelative } from '@/lib/utils'
 import { Ticket } from 'lucide-react'
+import { PaginationBar } from '@/components/shared/pagination-bar'
 
 interface TicketRow {
   id: string
@@ -31,6 +32,9 @@ interface TicketRow {
 interface Props {
   tickets: TicketRow[]
   currentFilters: { status?: string; type?: string }
+  page: number
+  totalPages: number
+  totalCount: number
 }
 
 const STATUS_OPTIONS = [
@@ -49,7 +53,7 @@ const TYPE_OPTIONS = [
   { value: 'maquinaria', label: 'Maquinaria' },
 ]
 
-export function AdminMaintenanceList({ tickets, currentFilters }: Props) {
+export function AdminMaintenanceList({ tickets, currentFilters, page, totalPages, totalCount }: Props) {
   const router  = useRouter()
   const path    = usePathname()
 
@@ -66,7 +70,7 @@ export function AdminMaintenanceList({ tickets, currentFilters }: Props) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
           Solicitudes de mantenimiento
-          <span className="ml-2 text-sm font-normal text-zinc-400">({tickets.length})</span>
+          <span className="ml-2 text-sm font-normal text-zinc-400">({totalCount})</span>
         </h1>
       </div>
 
@@ -150,6 +154,8 @@ export function AdminMaintenanceList({ tickets, currentFilters }: Props) {
           ))}
         </div>
       )}
+
+      <PaginationBar page={page} totalPages={totalPages} />
     </div>
   )
 }

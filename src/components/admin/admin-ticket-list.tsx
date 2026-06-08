@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter, usePathname } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -14,6 +15,7 @@ import {
   type TicketStatus, type Priority,
 } from '@/lib/types'
 import { formatDate, cn } from '@/lib/utils'
+import { PaginationBar } from '@/components/shared/pagination-bar'
 
 interface TicketRow {
   id: string; folio: string; status: string; priority: string
@@ -25,22 +27,39 @@ interface TicketRow {
   department: { name: string } | null
 }
 
-export function AdminTicketList({ tickets }: { tickets: TicketRow[] }) {
-  const [search,   setSearch]   = useState('')
-  const [status,   setStatus]   = useState('all')
-  const [priority, setPriority] = useState('all')
+interface Props {
+  tickets: TicketRow[]
+  currentFilters: { status?: string; priority?: string }
+  page: number
+  totalPages: number
+}
 
+export function AdminTicketList({ tickets, currentFilters, page, totalPages }: Props) {
+  const router = useRouter()
+  const path   = usePathname()
+  const [search, setSearch] = useState('')
+
+  const status   = currentFilters.status   ?? 'all'
+  const priority = currentFilters.priority ?? 'all'
+
+  function setFilter(key: 'status' | 'priority', value: string) {
+    const sp = new URLSearchParams()
+    if (key !== 'status'   && currentFilters.status)   sp.set('status', currentFilters.status)
+    if (key !== 'priority' && currentFilters.priority) sp.set('priority', currentFilters.priority)
+    if (value !== 'all') sp.set(key, value)
+    router.push(sp.size ? `${path}?${sp.toString()}` : path)
+  }
+
+  // El filtro de texto opera solo sobre la página actual — el estado/prioridad
+  // ya se filtran en el servidor antes de paginar
   const filtered = tickets.filter((t) => {
     const q = search.toLowerCase()
-    const matchSearch = !q ||
+    return !q ||
       t.folio.toLowerCase().includes(q) ||
       (t.user?.full_name ?? '').toLowerCase().includes(q) ||
       (t.user?.email ?? '').toLowerCase().includes(q) ||
       (t.department?.name ?? '').toLowerCase().includes(q) ||
       t.description.toLowerCase().includes(q)
-    const matchStatus   = status   === 'all' || t.status   === status
-    const matchPriority = priority === 'all' || t.priority === priority
-    return matchSearch && matchStatus && matchPriority
   })
 
   return (
@@ -50,13 +69,13 @@ export function AdminTicketList({ tickets }: { tickets: TicketRow[] }) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
           <Input
-            placeholder="Buscar por folio, usuario, departamento…"
+            placeholder="Buscar en esta página por folio, usuario, departamento…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
           />
         </div>
-        <Select value={status} onValueChange={(v) => v !== null && setStatus(v)}>
+        <Select value={status} onValueChange={(v) => v && setFilter('status', v)}>
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Estado">
               {status === 'all' ? 'Todos' : STATUS_LABELS[status as TicketStatus]}
@@ -69,7 +88,7 @@ export function AdminTicketList({ tickets }: { tickets: TicketRow[] }) {
             ))}
           </SelectContent>
         </Select>
-        <Select value={priority} onValueChange={(v) => v !== null && setPriority(v)}>
+        <Select value={priority} onValueChange={(v) => v && setFilter('priority', v)}>
           <SelectTrigger className="w-full sm:w-36">
             <SelectValue placeholder="Prioridad">
               {priority === 'all' ? 'Todas' : PRIORITY_LABELS[priority as Priority]}
@@ -86,7 +105,7 @@ export function AdminTicketList({ tickets }: { tickets: TicketRow[] }) {
 
       {/* Contador */}
       <p className="text-xs text-zinc-400">
-        {filtered.length} de {tickets.length} tickets
+        {filtered.length} de {tickets.length} tickets en esta página
       </p>
 
       {/* Lista */}
@@ -140,6 +159,8 @@ export function AdminTicketList({ tickets }: { tickets: TicketRow[] }) {
           ))}
         </div>
       )}
+
+      <PaginationBar page={page} totalPages={totalPages} />
     </div>
   )
 }
