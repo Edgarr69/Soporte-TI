@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { AdminReportsView } from '@/components/admin/admin-reports'
-import { getCachedAllSistemasTickets } from '@/lib/admin-dashboard-cache'
+import { getCachedSistemasStats } from '@/lib/admin-dashboard-cache'
 import { getAuthedProfile } from '@/lib/auth'
 
 export default async function AdminReportesPage() {
@@ -10,74 +10,24 @@ export default async function AdminReportesPage() {
   if (!user) redirect('/login')
   if (!profile || !['admin_sistemas', 'super_admin'].includes(profile.role)) redirect('/dashboard')
 
-  const all = await getCachedAllSistemasTickets()
+  const stats = await getCachedSistemasStats()
+  const { summary } = stats
 
-  // Por mes
-  const monthMap = new Map<string, number>()
-  all.forEach((t) => {
-    const month = t.created_at.slice(0, 7)
-    monthMap.set(month, (monthMap.get(month) ?? 0) + 1)
-  })
-  const monthly = [...monthMap.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, count]) => ({ month, count }))
+  const monthly = stats.byMonth.map((m) => ({ month: m.month, count: m.total }))
 
-  // Por categoría
-  const catMap = new Map<string, { total: number; critica: number }>()
-  all.forEach((t) => {
-    const name = (t.ticket_categories as unknown as { name: string } | null)?.name ?? 'Sin categoría'
-    const cur = catMap.get(name) ?? { total: 0, critica: 0 }
-    cur.total++
-    if (t.priority === 'critica') cur.critica++
-    catMap.set(name, cur)
-  })
-  const byCategory = [...catMap.entries()].map(([name, v]) => ({ name, ...v }))
+  const byCategory = stats.byCategory.map((c) => ({ name: c.name, total: c.total, critica: c.critica }))
 
-  // Por prioridad
-  const prioMap = new Map<string, number>()
-  all.forEach((t) => prioMap.set(t.priority, (prioMap.get(t.priority) ?? 0) + 1))
   const byPriority = ['critica', 'alta', 'media', 'baja'].map((p) => ({
-    name: p, count: prioMap.get(p) ?? 0,
+    name: p, count: summary[p as 'critica' | 'alta' | 'media' | 'baja'],
   }))
 
-  // Por departamento
-  const deptMap = new Map<string, number>()
-  all.forEach((t) => {
-    const name = (t.department as unknown as { name: string } | null)?.name ?? 'Sin depto.'
-    deptMap.set(name, (deptMap.get(name) ?? 0) + 1)
-  })
-  const byDepartment = [...deptMap.entries()]
-    .map(([name, count]) => ({ name, count }))
+  const byDepartment = stats.byDepartment
+    .map((d) => ({ name: d.name, count: d.total }))
     .sort((a, b) => b.count - a.count)
 
-  // Top usuarios
-  const userMap = new Map<string, { name: string; count: number }>()
-  all.forEach((t) => {
-    const u = t.user as unknown as { full_name: string; email: string } | null
-    const key = u?.email ?? 'desconocido'
-    const cur = userMap.get(key) ?? { name: u?.full_name ?? key, count: 0 }
-    cur.count++
-    userMap.set(key, cur)
-  })
-  const topUsers = [...userMap.entries()]
-    .map(([email, v]) => ({ email, ...v }))
-    .sort((a, b) => b.count - a.count)
+  const topUsers = stats.topUsers
     .slice(0, 10)
-
-  // Tiempos
-  const validResponse = all
-    .map((t) => t.first_response_time_minutes as number | null)
-    .filter((v): v is number => v !== null)
-  const validResolution = all
-    .map((t) => t.resolution_time_minutes as number | null)
-    .filter((v): v is number => v !== null)
-
-  const avgFirstResponse = validResponse.length
-    ? Math.round(validResponse.reduce((a, b) => a + b, 0) / validResponse.length)
-    : null
-  const avgResolution = validResolution.length
-    ? Math.round(validResolution.reduce((a, b) => a + b, 0) / validResolution.length)
-    : null
+    .map((u) => ({ email: u.email, name: u.full_name ?? u.email, count: u.total }))
 
   return (
     <AdminReportsView
@@ -86,11 +36,11 @@ export default async function AdminReportesPage() {
       byPriority={byPriority}
       byDepartment={byDepartment}
       topUsers={topUsers}
-      avgFirstResponse={avgFirstResponse}
-      avgResolution={avgResolution}
-      totalTickets={all.length}
-      reopenedCount={all.filter((t) => t.is_reopened).length}
-      criticalPercent={all.length ? Math.round((prioMap.get('critica') ?? 0) / all.length * 100) : 0}
+      avgFirstResponse={summary.avg_first_response}
+      avgResolution={summary.avg_resolution}
+      totalTickets={summary.total}
+      reopenedCount={summary.reopened_count}
+      criticalPercent={summary.total ? Math.round((summary.critica / summary.total) * 100) : 0}
     />
   )
 }

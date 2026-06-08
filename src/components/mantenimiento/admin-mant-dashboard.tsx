@@ -17,7 +17,6 @@ import { MAINTENANCE_STATUS_LABELS } from '@/lib/types'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Ticket {
-  id: string
   type: string
   status: string
   area_name_snapshot: string | null
@@ -50,11 +49,6 @@ function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
 
-function calcAvg(vals: (number | null)[]): number | null {
-  const v = vals.filter((x): x is number => x !== null)
-  return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null
-}
-
 function fmtMinutes(minutes: number | null): { value: number; unit: string } | null {
   if (minutes === null) return null
   if (minutes >= 60) return { value: Math.round((minutes / 60) * 10) / 10, unit: 'h' }
@@ -68,6 +62,10 @@ export function AdminMantenimientoDashboard({ tickets }: Props) {
   const defaultFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   const [fromDate, setFromDate] = useState(defaultFrom)
   const [toDate,   setToDate]   = useState(today)
+
+  // El backend solo trae los últimos 12 meses — el primer ticket (orden ascendente)
+  // marca el límite real de datos disponibles para no sugerir rangos vacíos
+  const minDate = tickets[0]?.created_at.slice(0, 10) ?? defaultFrom
 
   function handleFromChange(val: string) {
     setFromDate(val)
@@ -86,17 +84,32 @@ export function AdminMantenimientoDashboard({ tickets }: Props) {
     }),
   [tickets, fromDate, toDate])
 
-  // ── KPIs ────────────────────────────────────────────────────────────────
-  const total      = filtered.length
-  const pendiente  = filtered.filter((t) => t.status === 'pendiente').length
-  const activos    = filtered.filter((t) => ['en_revision','asignado','en_proceso'].includes(t.status)).length
-  const terminado  = filtered.filter((t) => t.status === 'terminado').length
-  const cancelado  = filtered.filter((t) => t.status === 'cancelado').length
-  const general    = filtered.filter((t) => t.type === 'general').length
-  const maquinaria = filtered.filter((t) => t.type === 'maquinaria').length
+  // ── KPIs (un solo recorrido sobre `filtered` en vez de ~9 pasadas separadas) ──
+  const kpis = useMemo(() => {
+    let pendiente = 0, activos = 0, terminado = 0, cancelado = 0, general = 0, maquinaria = 0
+    let assignSum = 0, assignCount = 0, resolSum = 0, resolCount = 0
 
-  const avgAssignment = calcAvg(filtered.map((t) => t.assignment_time_minutes))
-  const avgResolution = calcAvg(filtered.map((t) => t.resolution_time_minutes))
+    for (const t of filtered) {
+      if      (t.status === 'pendiente')   pendiente++
+      else if (t.status === 'terminado')   terminado++
+      else if (t.status === 'cancelado')   cancelado++
+      else if (t.status === 'en_revision' || t.status === 'asignado' || t.status === 'en_proceso') activos++
+
+      if      (t.type === 'general')    general++
+      else if (t.type === 'maquinaria') maquinaria++
+
+      if (t.assignment_time_minutes != null) { assignSum += t.assignment_time_minutes; assignCount++ }
+      if (t.resolution_time_minutes != null) { resolSum  += t.resolution_time_minutes; resolCount++ }
+    }
+
+    return {
+      total: filtered.length, pendiente, activos, terminado, cancelado, general, maquinaria,
+      avgAssignment: assignCount ? Math.round(assignSum / assignCount) : null,
+      avgResolution: resolCount ? Math.round(resolSum / resolCount) : null,
+    }
+  }, [filtered])
+
+  const { total, pendiente, activos, terminado, cancelado, general, maquinaria, avgAssignment, avgResolution } = kpis
 
   // ── Trend (daily) ────────────────────────────────────────────────────────
   const trendData = useMemo(() => {
@@ -171,6 +184,7 @@ export function AdminMantenimientoDashboard({ tickets }: Props) {
           <input
             type="date"
             value={fromDate}
+            min={minDate}
             onChange={(e) => handleFromChange(e.target.value)}
             className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 text-sm px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />

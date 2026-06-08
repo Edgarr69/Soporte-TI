@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { AdminDashboardView } from '@/components/admin/admin-dashboard'
-import { getCachedAllSistemasTickets } from '@/lib/admin-dashboard-cache'
+import { getCachedSistemasStats } from '@/lib/admin-dashboard-cache'
 import { getAuthedProfile } from '@/lib/auth'
 
 export default async function AdminDashboardPage() {
@@ -10,71 +10,25 @@ export default async function AdminDashboardPage() {
   if (!user) redirect('/login')
   if (!profile || !['admin_sistemas', 'super_admin'].includes(profile.role)) redirect('/dashboard')
 
-  const all = await getCachedAllSistemasTickets()
-
-  // Un solo loop para métricas, mapas y tendencia
-  let abierto = 0, en_proceso = 0, en_espera = 0, resuelto = 0, cerrado = 0, reabierto = 0
-  let critica = 0, alta = 0, media = 0, baja = 0
-  const firstResponseTimes: number[] = []
-  const resolutionTimes: number[]    = []
-  const userMap  = new Map<string, { name: string; count: number }>()
-  const catMap   = new Map<string, number>()
-  const deptMap  = new Map<string, number>()
-  const monthMap = new Map<string, number>()
-
-  for (const t of all) {
-    if      (t.status === 'abierto')    abierto++
-    else if (t.status === 'en_proceso') en_proceso++
-    else if (t.status === 'en_espera')  en_espera++
-    else if (t.status === 'resuelto')   resuelto++
-    else if (t.status === 'cerrado')    cerrado++
-    else if (t.status === 'reabierto')  reabierto++
-
-    if      (t.priority === 'critica') critica++
-    else if (t.priority === 'alta')    alta++
-    else if (t.priority === 'media')   media++
-    else if (t.priority === 'baja')    baja++
-
-    if (t.first_response_time_minutes != null) firstResponseTimes.push(t.first_response_time_minutes as number)
-    if (t.resolution_time_minutes     != null) resolutionTimes.push(t.resolution_time_minutes as number)
-
-    const u   = t.user as unknown as { full_name: string; email: string } | null
-    const key = u?.email ?? 'desconocido'
-    const existing = userMap.get(key)
-    if (existing) existing.count++
-    else userMap.set(key, { name: u?.full_name ?? key, count: 1 })
-
-    const catName  = (t.ticket_categories as unknown as { name: string } | null)?.name ?? 'Sin categoría'
-    catMap.set(catName, (catMap.get(catName) ?? 0) + 1)
-
-    const deptName = (t.department as unknown as { name: string } | null)?.name ?? 'Sin depto.'
-    deptMap.set(deptName, (deptMap.get(deptName) ?? 0) + 1)
-
-    const month = t.created_at.slice(0, 7)
-    monthMap.set(month, (monthMap.get(month) ?? 0) + 1)
-  }
-
-  const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null
+  const stats = await getCachedSistemasStats()
+  const { summary } = stats
 
   const metrics = {
-    total: all.length,
-    abierto, en_proceso, en_espera, resuelto, cerrado, reabierto,
-    critica, alta, media, baja,
-    avgFirstResponse: avg(firstResponseTimes),
-    avgResolution:    avg(resolutionTimes),
+    total: summary.total,
+    abierto: summary.abierto, en_proceso: summary.en_proceso, en_espera: summary.en_espera,
+    resuelto: summary.resuelto, cerrado: summary.cerrado, reabierto: summary.reabierto,
+    critica: summary.critica, alta: summary.alta, media: summary.media, baja: summary.baja,
+    avgFirstResponse: summary.avg_first_response,
+    avgResolution: summary.avg_resolution,
   }
 
-  const topUsers = [...userMap.entries()]
-    .map(([email, v]) => ({ email, ...v }))
-    .sort((a, b) => b.count - a.count)
+  const topUsers = stats.topUsers
     .slice(0, 8)
+    .map((u) => ({ email: u.email, name: u.full_name ?? u.email, count: u.total }))
 
-  const byCategory   = [...catMap.entries()].map(([name, count]) => ({ name, count }))
-  const byDepartment = [...deptMap.entries()].map(([name, count]) => ({ name, count }))
-  const monthly      = [...monthMap.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-6)
-    .map(([month, count]) => ({ month, count }))
+  const byCategory   = stats.byCategory.map((c) => ({ name: c.name, count: c.total }))
+  const byDepartment = stats.byDepartment.map((d) => ({ name: d.name, count: d.total }))
+  const monthly      = stats.byMonth.slice(-6).map((m) => ({ month: m.month, count: m.total }))
 
   return (
     <AdminDashboardView
@@ -83,8 +37,7 @@ export default async function AdminDashboardPage() {
       byCategory={byCategory}
       byDepartment={byDepartment}
       monthly={monthly}
-      recentTickets={all.slice(0, 10) as unknown as Record<string, unknown>[]}
+      recentTickets={stats.recentTickets as unknown as Record<string, unknown>[]}
     />
   )
 }
-
