@@ -1,7 +1,6 @@
 -- Migración 006: Restricción de tipos de ticket por departamento
 -- Por defecto todos los departamentos pueden crear ambos tipos.
 -- Si se quita 'maquinaria', ese departamento solo puede crear tickets generales.
-
 ALTER TABLE departments
   ADD COLUMN IF NOT EXISTS allowed_ticket_types text[] NOT NULL DEFAULT ARRAY['general','maquinaria'];
 

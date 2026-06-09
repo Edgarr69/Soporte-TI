@@ -37,6 +37,7 @@ export default async function NotificationsPage() {
         <NotificationsView
           initialNotifications={notifications ?? []}
           userId={user.id}
+          role={role}
         />
     </main>
   )

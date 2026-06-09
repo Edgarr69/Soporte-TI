@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 interface GridPatternProps {
@@ -25,7 +24,6 @@ export function AnimatedGridPattern({
   strokeDasharray = 0,
   numSquares = 50,
   className,
-  maxOpacity = 0.5,
   duration = 4,
   repeatDelay = 0.5,
   ...props
@@ -33,51 +31,52 @@ export function AnimatedGridPattern({
   const id = useId()
   const containerRef = useRef<SVGSVGElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
-  const [squares, setSquares] = useState(() => generateSquares(numSquares))
+  const [squares, setSquares] = useState<Array<{ id: number; pos: [number, number]; rev: number }>>([])
 
-  function getPos() {
+  function getPos(dims: { width: number; height: number }): [number, number] {
     return [
-      Math.floor((Math.random() * dimensions.width) / width),
-      Math.floor((Math.random() * dimensions.height) / height),
+      Math.floor((Math.random() * dims.width) / width),
+      Math.floor((Math.random() * dims.height) / height),
     ]
   }
 
-  function generateSquares(count: number) {
-    return Array.from({ length: count }, (_, i) => ({
-      id: i,
-      pos: getPos(),
-    }))
-  }
-
-  const updateSquarePosition = (id: number) => {
-    setSquares((currentSquares) =>
-      currentSquares.map((sq) =>
-        sq.id === id ? { ...sq, pos: getPos() } : sq,
-      ),
-    )
-  }
-
   useEffect(() => {
-    if (dimensions.width && dimensions.height) {
-      setSquares(generateSquares(numSquares))
-    }
+    if (!dimensions.width || !dimensions.height) return
+    setSquares(
+      Array.from({ length: numSquares }, (_, i) => ({
+        id: i,
+        pos: getPos(dimensions),
+        rev: 0,
+      }))
+    )
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dimensions, numSquares])
 
+  // Mueve un cuadrado aleatorio en cada ciclo de animación (reemplaza onAnimationComplete)
   useEffect(() => {
-    const resizeObserver = new ResizeObserver((entries) => {
+    if (!squares.length) return
+    const intervalMs = ((duration + repeatDelay) * 1000) / numSquares
+    const timer = setInterval(() => {
+      setSquares(prev => {
+        const idx = Math.floor(Math.random() * prev.length)
+        return prev.map((sq, i) =>
+          i === idx ? { ...sq, pos: getPos(dimensions), rev: sq.rev + 1 } : sq
+        )
+      })
+    }, intervalMs)
+    return () => clearInterval(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [squares.length, dimensions, duration, repeatDelay, numSquares])
+
+  useEffect(() => {
+    const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        })
+        setDimensions({ width: entry.contentRect.width, height: entry.contentRect.height })
       }
     })
-    if (containerRef.current) resizeObserver.observe(containerRef.current)
-    return () => {
-      if (containerRef.current) resizeObserver.unobserve(containerRef.current)
-    }
-  }, [containerRef])
+    if (containerRef.current) observer.observe(containerRef.current)
+    return () => { if (containerRef.current) observer.unobserve(containerRef.current) }
+  }, [])
 
   return (
     <svg
@@ -98,33 +97,23 @@ export function AnimatedGridPattern({
           x={x}
           y={y}
         >
-          <path
-            d={`M.5 ${height}V.5H${width}`}
-            fill="none"
-            strokeDasharray={strokeDasharray}
-          />
+          <path d={`M.5 ${height}V.5H${width}`} fill="none" strokeDasharray={strokeDasharray} />
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill={`url(#${id})`} />
       <svg x={x} y={y} className="overflow-visible">
-        {squares.map(({ pos: [sx, sy], id: sqId }, index) => (
-          <motion.rect
-            key={`${sx}-${sy}-${index}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: maxOpacity }}
-            transition={{
-              duration,
-              repeat: 1,
-              delay: index * 0.1,
-              repeatType: 'reverse',
-            }}
-            onAnimationComplete={() => updateSquarePosition(sqId)}
+        {squares.map(({ pos: [sx, sy], id: sqId, rev }, index) => (
+          <rect
+            key={`${sqId}-${rev}`}
             width={width - 1}
             height={height - 1}
             x={sx * width + 1}
             y={sy * height + 1}
             fill="currentColor"
             strokeWidth="0"
+            style={{
+              animation: `grid-fade ${duration}s ease-in-out ${index * 0.1}s 1 both`,
+            }}
           />
         ))}
       </svg>

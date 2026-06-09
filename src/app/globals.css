@@ -126,5 +126,34 @@
   }
   html {
     @apply font-sans;
+    font-size: 16px;
   }
+  /* Pantallas muy pequeñas (iPhone SE, Galaxy A serie baja, etc.) */
+  @media (max-width: 374px) {
+    html { font-size: 14px; }
+  }
+  /* Tablets pequeñas y móviles medianos */
+  @media (min-width: 375px) and (max-width: 413px) {
+    html { font-size: 15px; }
+  }
+  /* Respeta la preferencia del usuario de reducir animaciones */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+}
+
+/* Keyframes para la landing page */
+@keyframes blur-in {
+  from { filter: blur(15px); opacity: 0; }
+  to   { filter: blur(0px);  opacity: 1; }
+}
+
+@keyframes grid-fade {
+  0%   { opacity: 0; }
+  50%  { opacity: 0.4; }
+  100% { opacity: 0; }
 }

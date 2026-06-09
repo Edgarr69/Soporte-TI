@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Bell, Check, ExternalLink } from 'lucide-react'
-import type { Notification } from '@/lib/types'
+import type { Notification, Role } from '@/lib/types'
 import { formatRelative, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { NotifDetailModal, toNotifItem, type NotifItem } from '@/components/shared/notif-detail-modal'
@@ -13,13 +14,36 @@ import { NotifDetailModal, toNotifItem, type NotifItem } from '@/components/shar
 interface Props {
   initialNotifications: Notification[]
   userId: string
+  role: Role
 }
 
-export function NotificationsView({ initialNotifications, userId }: Props) {
+export function NotificationsView({ initialNotifications, userId, role }: Props) {
   const supabase = createClient()
+  const router   = useRouter()
   const [notifications, setNotifications] = useState(initialNotifications)
   const [selected, setSelected] = useState<NotifItem | null>(null)
   const [markingAll, setMarkingAll] = useState(false)
+
+  // Tiempo real — misma estrategia que el chat de tickets (canal + postgres_changes).
+  // Replica el filtro por módulo de la página (admin_sistemas/admin_mantenimiento
+  // solo ven lo suyo) ya que `postgres_changes` no soporta esa lógica condicional
+  useEffect(() => {
+    const channel = supabase
+      .channel(`notifications-page-${userId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notifications',
+        filter: `user_id=eq.${userId}`,
+      }, (payload) => {
+        const row = payload.new as Notification
+        if (role === 'admin_sistemas'      && row.module !== 'sistemas')      return
+        if (role === 'admin_mantenimiento' && row.module !== 'mantenimiento') return
+        setNotifications((prev) => prev.some((n) => n.id === row.id) ? prev : [row, ...prev])
+        router.refresh()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [userId, role, supabase, router])
 
   async function markAllRead() {
     setMarkingAll(true)
@@ -31,6 +55,7 @@ export function NotificationsView({ initialNotifications, userId }: Props) {
     setMarkingAll(false)
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
     toast.success('Todas marcadas como leídas.')
+    router.refresh()
   }
 
   async function openDetail(n: Notification) {
@@ -38,6 +63,7 @@ export function NotificationsView({ initialNotifications, userId }: Props) {
     if (!n.is_read) {
       await supabase.from('notifications').update({ is_read: true }).eq('id', n.id)
       setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, is_read: true } : x))
+      router.refresh()
     }
   }
 

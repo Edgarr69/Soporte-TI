@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, ExternalLink } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
@@ -26,6 +27,7 @@ interface Props {
 
 export function NotificationBell({ unreadCount: initialCount, userId, role }: Props) {
   const supabase = createClient()
+  const router   = useRouter()
   const isAdmin  = ADMIN_ROLES.includes(role)
 
   const [count, setCount]         = useState(initialCount)
@@ -36,6 +38,39 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
   const [markingAll, setMarkingAll] = useState(false)
 
   useEffect(() => { setCount(initialCount) }, [initialCount])
+
+  // Suscripción en tiempo real — misma estrategia que el chat de tickets
+  // (canal + postgres_changes + cleanup en el cleanup del efecto)
+  useEffect(() => {
+    const channel = isAdmin
+      ? supabase
+          .channel(`admin-notifications-bell-${userId}`)
+          .on('postgres_changes', {
+            event: 'INSERT', schema: 'public', table: 'admin_notifications',
+          }, async () => {
+            // El conteo depende del módulo según el rol — recalculamos con la
+            // misma RPC que usa el layout en vez de duplicar esa lógica aquí
+            const { data } = await supabase.rpc('get_admin_unread_count')
+            if (typeof data === 'number') setCount(data)
+            setLoaded(false)
+            router.refresh()
+          })
+          .subscribe()
+      : supabase
+          .channel(`notifications-bell-${userId}`)
+          .on('postgres_changes', {
+            event: 'INSERT', schema: 'public', table: 'notifications',
+            filter: `user_id=eq.${userId}`,
+          }, (payload) => {
+            const row = payload.new as Notification
+            setCount((c) => c + 1)
+            setItems((prev) => prev.some((n) => n.id === row.id) ? prev : [toNotifItem(row), ...prev])
+            router.refresh()
+          })
+          .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [isAdmin, userId, supabase, router])
 
   async function handleOpen(isOpen: boolean) {
     setOpen(isOpen)
@@ -69,6 +104,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
       }
       setItems((prev) => prev.map((n) => n.id === item.id ? { ...n, is_read: true } : n))
       setCount((c) => Math.max(0, c - 1))
+      router.refresh()
     }
   }
 
@@ -86,6 +122,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
     setMarkingAll(false)
     setCount(0)
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })))
+    router.refresh()
   }
 
   const footerHref  = isAdmin ? '/admin/historial' : '/notificaciones'

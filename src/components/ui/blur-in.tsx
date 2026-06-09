@@ -1,6 +1,5 @@
 'use client'
 
-import { motion, useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 interface BlurInProps {
@@ -13,27 +12,17 @@ interface BlurInProps {
   duration?: number
 }
 
-export function BlurIn({ word, className, variant, duration = 1 }: BlurInProps) {
-  const prefersReducedMotion = useReducedMotion()
-  const defaultVariants = {
-    hidden:  { filter: 'blur(10px)', opacity: 0 },
-    visible: { filter: 'blur(0px)',  opacity: 1 },
-  }
-  const combinedVariants = variant || defaultVariants
-
+export function BlurIn({ word, className, duration = 1 }: BlurInProps) {
   return (
-    <motion.h1
-      initial={prefersReducedMotion ? 'visible' : 'hidden'}
-      animate="visible"
-      transition={{ duration: prefersReducedMotion ? 0 : duration }}
-      variants={combinedVariants}
-      className={cn(
-        'font-display text-center text-4xl font-bold tracking-[-0.02em] drop-shadow-sm md:text-7xl md:leading-[5rem]',
-        className,
-      )}
+    <h1
+      className={cn(className)}
+      style={{
+        animation: `blur-in ${duration}s ease-out forwards`,
+        opacity: 0,
+      }}
     >
       {word}
-    </motion.h1>
+    </h1>
   )
 }
 

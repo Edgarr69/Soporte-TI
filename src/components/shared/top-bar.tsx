@@ -47,7 +47,7 @@ export function TopBar({ unreadCount, userId, role }: Props) {
   return (
     <div className="sticky top-0 z-40 h-12 flex items-center justify-between px-3 md:px-4
       shadow backdrop-blur-sm backdrop-saturate-150
-      bg-background/60 dark:bg-default-100/50
+      bg-background/60 dark:bg-zinc-800/50
       border-b border-gray-300 dark:border-gray-700/50"
     >
       {/* Botón hamburguesa - solo móvil */}
