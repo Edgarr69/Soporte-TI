@@ -24,8 +24,11 @@ export async function proxy(request: NextRequest) {
   )
 
   // Refresca el token de sesión en cada request.
-  // IMPORTANTE: no eliminar este getUser() — es lo que activa el refresh.
-  await supabase.auth.getUser()
+  // IMPORTANTE: no eliminar este getClaims() — es lo que activa el refresh.
+  // Con asymmetric JWT signing keys valida la firma localmente (sin llamada
+  // de red a Supabase Auth); con el secreto legacy HS256 cae de vuelta a
+  // validación en el servidor, así que es seguro en ambos modos.
+  await supabase.auth.getClaims()
 
   return supabaseResponse
 }
