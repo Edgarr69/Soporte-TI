@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Soporte TI — Sistema unificado de soporte y mantenimiento
 
-## Getting Started
+Plataforma web interna para gestionar dos tipos de solicitudes:
 
-First, run the development server:
+1. **Tickets de sistemas (TI)** — problemas de software, hardware y redes, con prioridad calculada automáticamente.
+2. **Solicitudes de mantenimiento** — trabajos de mantenimiento general (`MTTO-*`) o de maquinaria (`MAQ-*`), con asignación de técnicos y generación de PDF.
+
+Ambos módulos comparten autenticación, notificaciones y estructura de roles, pero tienen flujos de estados, catálogos y reportes independientes.
+
+## Stack
+
+- [Next.js 16](https://nextjs.org) App Router · TypeScript · Tailwind CSS v4
+- [shadcn/ui](https://ui.shadcn.com) v4 (basado en `@base-ui/react`)
+- [Supabase](https://supabase.com) — auth por cookies (`@supabase/ssr`), Postgres con RLS, Storage
+- `@react-pdf/renderer` — generación de PDF en Server Actions
+- Recharts — gráficas de dashboards y reportes
+- `date-fns` (locale español) · `next-themes` (dark mode)
+
+## Roles
+
+| Rol | Home | Permisos |
+|-----|------|----------|
+| `usuario` | `/dashboard` | Crear tickets y solicitudes, ver los propios |
+| `admin_sistemas` | `/admin/sistemas` | Gestionar tickets de sistemas, crear usuarios (rol `usuario`) |
+| `admin_mantenimiento` | `/admin/mantenimiento` | Gestionar solicitudes, técnicos y catálogos |
+| `super_admin` | `/admin` | Todo lo anterior + gestión completa de roles |
+| `tecnico_mantenimiento` | `/tecnico` | Ver trabajos asignados (solo lectura) |
+
+## Desarrollo local
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Requiere un archivo `.env.local` con:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=   # solo server-side (Admin API)
+NEXT_PUBLIC_APP_URL=         # URL base, usada para servir el logo del PDF
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+La aplicación corre en [http://localhost:3000](http://localhost:3000).
 
-## Learn More
+## Base de datos
 
-To learn more about Next.js, take a look at the following resources:
+- El schema base vive en el proyecto de Supabase; las migraciones incrementales están en `supabase/migrations/` y se aplican manualmente en el SQL Editor.
+- Buckets de Storage: `maintenance-docs` (PDFs y evidencias de mantenimiento).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Estructura
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+  actions/      Server Actions (tickets, maintenance, catalogs, users)
+  app/          Rutas App Router (usuario, admin, técnico)
+  components/   UI por módulo + shared + ui (shadcn)
+  lib/          Tipos, helpers, clientes Supabase, caches
+  proxy.ts      Refresh de sesión por request (reemplaza middleware.ts)
+docs/context/   Documentación de contexto por módulo
+supabase/       Migraciones SQL
+```
 
-## Deploy on Vercel
+## Verificación antes de desplegar
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npx tsc --noEmit
+npm run build
+```
