@@ -55,7 +55,7 @@ export async function createTicket(data: NewTicketFormData) {
   const [{ error: notifErr }] = await Promise.all([
     supabase.from('notifications').insert({
       user_id:   user.id,
-      ticket_id: null,
+      ticket_id: ticket.id,
       type:      'ticket_created',
       module:    'sistemas',
       title:     'Ticket de sistemas creado',
