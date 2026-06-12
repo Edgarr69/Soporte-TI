@@ -271,12 +271,18 @@ export async function addComment(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const { data: ticket } = await supabase
-    .from('tickets')
-    .select('user_id, folio')
-    .eq('id', ticketId)
-    .single()
+  // Misma regla que en mantenimiento: solo el dueño del ticket o un admin
+  // de sistemas pueden comentar, y los comentarios internos son solo de admins
+  const [{ data: ticket }, { data: profile }] = await Promise.all([
+    supabase.from('tickets').select('user_id, folio').eq('id', ticketId).single(),
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+  ])
   if (!ticket) return { error: 'Ticket no encontrado' }
+
+  const isAdmin = ['admin_sistemas', 'super_admin'].includes(profile?.role ?? '')
+  const isOwner = ticket.user_id === user.id
+  if (!isOwner && !isAdmin) return { error: 'Sin permiso' }
+  if (isInternal && !isAdmin) return { error: 'Sin permiso para comentarios internos' }
 
   const { error } = await supabase.from('ticket_comments').insert({
     ticket_id:   ticketId,

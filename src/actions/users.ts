@@ -27,6 +27,17 @@ export async function createUser(data: {
   if (!adminProfile || !allowedRoles.includes(adminProfile.role as Role))
     return { error: 'Sin permiso' }
 
+  // Validar el rol asignable según quién crea (la UI ya lo restringe, pero
+  // las server actions son endpoints públicos — sin esto un admin podría
+  // crear cuentas con un rol superior al suyo)
+  const creatableRolesByAdmin: Record<string, Role[]> = {
+    super_admin:        ['usuario', 'tecnico_mantenimiento', 'admin_sistemas', 'admin_mantenimiento', 'super_admin'],
+    admin_sistemas:     ['usuario'],
+    admin_mantenimiento: ['usuario', 'tecnico_mantenimiento'],
+  }
+  if (!creatableRolesByAdmin[adminProfile.role]?.includes(data.role))
+    return { error: 'Sin permiso para crear usuarios con ese rol' }
+
   // Use service role client for admin operations
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { error: 'Configuración de servidor incompleta' }
 
@@ -166,6 +177,21 @@ export async function deleteUser(targetUserId: string) {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { error: 'Configuración de servidor incompleta' }
 
   const adminSupabase = createAdminClient()
+
+  // Misma jerarquía que en createUser: cada admin solo puede eliminar
+  // usuarios cuyo rol podría crear (la UI ya lo restringe, pero las
+  // server actions son endpoints públicos). El rol del target se lee con
+  // el cliente de servicio para no depender de la RLS de profiles.
+  const deletableRolesByAdmin: Record<string, Role[]> = {
+    super_admin:        ['usuario', 'tecnico_mantenimiento', 'admin_sistemas', 'admin_mantenimiento', 'super_admin'],
+    admin_sistemas:     ['usuario'],
+    admin_mantenimiento: ['usuario', 'tecnico_mantenimiento'],
+  }
+  const { data: targetProfile } = await adminSupabase
+    .from('profiles').select('role').eq('id', targetUserId).single()
+  if (!targetProfile) return { error: 'Usuario no encontrado' }
+  if (!deletableRolesByAdmin[adminProfile.role]?.includes(targetProfile.role as Role))
+    return { error: 'Sin permiso para eliminar usuarios con ese rol' }
 
   const { error } = await adminSupabase.auth.admin.deleteUser(targetUserId)
   if (error) return { error: error.message }
