@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { Mail, Lock, Loader2 } from 'lucide-react'
 import { useTheme } from 'next-themes'
@@ -14,7 +13,6 @@ interface Props {
 }
 
 export function LoginModal({ isOpen, onClose }: Props) {
-  const router            = useRouter()
   const supabase          = createClient()
   const { resolvedTheme } = useTheme()
   const dark              = resolvedTheme === 'dark'
@@ -84,8 +82,7 @@ export function LoginModal({ isOpen, onClose }: Props) {
     }
     toast.success('Inicio de sesión exitoso')
     onClose()
-    router.refresh()
-    router.push('/dashboard')
+    window.location.href = '/dashboard'
   }
 
   if (!mounted || !isOpen) return null

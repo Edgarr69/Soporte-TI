@@ -15,15 +15,15 @@ export const getAuthedProfile = cache(async () => {
   const supabase = await createClient()
 
   // Ambas queries en paralelo — RLS de profiles filtra por auth.uid() automáticamente
-  const [{ data: { user } }, { data: profile }] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase
-      .from('profiles')
-      .select('*, department:departments(id, name, allowed_ticket_types)')
-      .single(),
-  ])
-
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { supabase, user: null, profile: null }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*, department:departments(id, name, allowed_ticket_types)')
+    .eq('id', user.id)
+    .single()
+
   return { supabase, user, profile }
 })
 
