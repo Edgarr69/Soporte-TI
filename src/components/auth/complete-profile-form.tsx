@@ -55,7 +55,7 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
 
     if (error) {
       console.error('Profile update error:', error)
-      toast.error(`Error: ${error.message}`)
+      toast.error('Error al guardar el perfil. Intenta de nuevo.')
       setLoading(false)
       return
     }

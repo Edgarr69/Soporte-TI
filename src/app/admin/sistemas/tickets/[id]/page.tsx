@@ -44,6 +44,7 @@ export default async function AdminTicketDetailPage({ params }: Props) {
       history={history ?? []}
       comments={comments ?? []}
       userId={user.id}
+      adminName={profile?.full_name ?? user.email ?? 'Admin'}
     />
   )
 }

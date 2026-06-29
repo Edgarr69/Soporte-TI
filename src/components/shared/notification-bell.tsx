@@ -100,7 +100,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
       if (isAdmin) {
         await supabase.rpc('mark_admin_notification_read', { p_notification_id: item.id })
       } else {
-        await supabase.from('notifications').update({ is_read: true }).eq('id', item.id)
+        await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('id', item.id)
       }
       setItems((prev) => prev.map((n) => n.id === item.id ? { ...n, is_read: true } : n))
       setCount((c) => Math.max(0, c - 1))
@@ -131,7 +131,10 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
   return (
     <>
       <DropdownMenu open={open} onOpenChange={handleOpen}>
-        <DropdownMenuTrigger className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'relative')}>
+        <DropdownMenuTrigger
+          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'relative')}
+          aria-label={count > 0 ? `Notificaciones, ${count} sin leer` : 'Notificaciones'}
+        >
           <Bell className="h-6 w-6" />
           {count > 0 && (
             <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-zinc-950">
@@ -140,7 +143,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
           )}
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" sideOffset={8} className="w-96 p-0 overflow-hidden">
+        <DropdownMenuContent align="end" sideOffset={8} className="w-[min(24rem,calc(100vw-1rem))] p-0 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
             <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
               {isAdmin ? 'Actividad reciente' : 'Notificaciones'}

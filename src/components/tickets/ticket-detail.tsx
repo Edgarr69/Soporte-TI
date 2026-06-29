@@ -124,7 +124,7 @@ export function TicketDetail({ ticket, history, comments, currentUserId, current
     <div className="space-y-6">
       {/* Encabezado */}
       <div className="flex items-center gap-3">
-        <LinkButton href="/mis-tickets" variant="ghost" size="icon" className="-ml-2">
+        <LinkButton href="/mis-tickets" variant="ghost" size="icon" className="-ml-2" aria-label="Volver a mis tickets">
           <ArrowLeft className="h-4 w-4" />
         </LinkButton>
         <div className="flex-1 min-w-0">
@@ -155,7 +155,7 @@ export function TicketDetail({ ticket, history, comments, currentUserId, current
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
         {/* ── Chat ── */}
-        <div className="lg:col-span-2 lg:sticky lg:top-6">
+        <div className="order-2 lg:order-1 lg:col-span-2 lg:sticky lg:top-6">
           <Card className="border-zinc-200 dark:border-zinc-800 flex flex-col h-[calc(100vh-14rem)]">
             <CardHeader className="pb-2 border-b border-zinc-100 dark:border-zinc-800 flex-shrink-0">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -230,6 +230,7 @@ export function TicketDetail({ ticket, history, comments, currentUserId, current
                 onClick={submitComment}
                 disabled={submitting || !commentBody.trim()}
                 className="self-end"
+                aria-label="Enviar mensaje"
               >
                 <Send className="h-4 w-4" />
               </Button>
@@ -238,7 +239,7 @@ export function TicketDetail({ ticket, history, comments, currentUserId, current
         </div>
 
         {/* ── Info + Historial ── */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="order-1 lg:order-2 lg:col-span-3 space-y-4">
 
           {/* Descripción */}
           <Card className="border-zinc-200 dark:border-zinc-800">

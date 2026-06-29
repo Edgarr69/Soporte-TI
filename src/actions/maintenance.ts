@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { MaintenanceStatus, MaintenanceType } from '@/lib/types'
 import { createAdminNotification } from '@/actions/admin-notifications'
@@ -29,13 +29,6 @@ function getLogoSrc(): string | null {
   }
 }
 
-function getServiceClient() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
-}
 
 // ─── Crear solicitud de mantenimiento ────────────────────
 
@@ -112,11 +105,11 @@ export async function createMaintenanceTicket(formData: FormData) {
 
   if (insertErr || !ticket) return { error: insertErr?.message ?? 'Error al crear solicitud' }
 
-  const serviceClient = getServiceClient()
+  const serviceClient = createAdminClient()
 
   // Subir foto si la hay y obtener data URL para el PDF
   let photoUrl: string | null = null
-  const PHOTO_ALLOWED_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  const PHOTO_ALLOWED_MIMES = ['image/jpeg', 'image/jpg', 'image/png']
   if (photoFile && photoFile.size > 0 && PHOTO_ALLOWED_MIMES.includes(photoFile.type) && photoFile.size <= 10 * 1024 * 1024) {
     try {
       const ext       = photoFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
@@ -169,9 +162,7 @@ export async function createMaintenanceTicket(formData: FormData) {
   if (notifErr) console.error('[createMaintenanceTicket] notification insert failed:', notifErr.message)
 
   // Admin notification
-  const { data: actorProfileM } = await supabase
-    .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const actorNameM = actorProfileM?.full_name ?? actorProfileM?.email ?? 'Usuario'
+  const actorNameM = creatorProfileM?.full_name ?? creatorProfileM?.email ?? 'Usuario'
   await createAdminNotification({
     title:       'Nueva solicitud de mantenimiento',
     message:     `${actorNameM} solicitó "${servicio}" (${ticket.folio})`,
@@ -421,10 +412,12 @@ export async function cancelMaintenanceTicket(ticketId: string, reason?: string)
   if (ticket.status !== 'pendiente') return { error: 'Solo puedes cancelar solicitudes pendientes' }
 
   const now = new Date().toISOString()
-  await supabase
+  const { error: updateError } = await supabase
     .from('maintenance_tickets')
     .update({ status: 'cancelado', cancelled_at: now, cancel_reason: reason ?? null })
     .eq('id', ticketId)
+
+  if (updateError) return { error: 'Error al cancelar la solicitud' }
 
   await supabase.from('maintenance_status_history').insert({
     ticket_id:   ticketId,
@@ -522,7 +515,7 @@ export async function deleteEvidencia(
 
   if (!ev) return { error: 'Evidencia no encontrada' }
 
-  const serviceClient = getServiceClient()
+  const serviceClient = createAdminClient()
   await serviceClient.storage.from('maintenance-docs').remove([ev.file_path])
   await serviceClient.from('maintenance_evidencias').delete().eq('id', evidenciaId)
 
@@ -552,13 +545,13 @@ export async function regeneratePdf(ticketId: string) {
     return { error: 'No se puede regenerar el PDF de una solicitud terminada' }
 
   // Buscar primera evidencia (foto) para incluirla en el PDF
-  const serviceClient = getServiceClient()
+  const serviceClient = createAdminClient()
   const { data: firstPhoto } = await serviceClient
     .from('maintenance_evidencias')
     .select('file_path, mime_type')
     .eq('ticket_id', ticketId)
     .eq('type', 'evidencia')
-    .in('mime_type', ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
+    .in('mime_type', ['image/jpeg', 'image/jpg', 'image/png'])
     .order('created_at', { ascending: true })
     .limit(1)
     .single()

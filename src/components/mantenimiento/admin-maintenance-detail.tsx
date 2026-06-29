@@ -17,7 +17,7 @@ import {
   type MaintenanceStatus, type MaintenanceType,
 } from '@/lib/types'
 import { cn, formatDate } from '@/lib/utils'
-import { ChevronLeft, FileText, CheckCircle2, UserCheck, Play, Check, X, Upload, Download, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
+import { ChevronLeft, FileText, CheckCircle2, UserCheck, Play, Check, X, Upload, Download, RefreshCw, RotateCcw, Trash2, Loader2 } from 'lucide-react'
 import { changeMaintenanceStatus, addMaintenanceComment, uploadEvidencia, regeneratePdf, reassignTecnico, deleteEvidencia } from '@/actions/maintenance'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -298,7 +298,7 @@ export function AdminMaintenanceDetail({
             {nextStatuses.includes('en_revision') && (
               <Button size="default" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm px-5"
                 onClick={() => transition('en_revision')} disabled={transitioning}>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
+                {transitioning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
                 Poner en revisión
               </Button>
             )}
@@ -312,7 +312,7 @@ export function AdminMaintenanceDetail({
             {nextStatuses.includes('en_proceso') && (
               <Button size="default" className="w-full sm:w-auto font-semibold shadow-sm px-5 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600 disabled:bg-green-300 dark:disabled:bg-green-900 disabled:text-white/60 transition-colors"
                 onClick={() => transition('en_proceso')} disabled={transitioning}>
-                <Play className="h-4 w-4 mr-2" />
+                {transitioning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
                 Iniciar trabajo
               </Button>
             )}
@@ -324,7 +324,7 @@ export function AdminMaintenanceDetail({
                 disabled={transitioning || otherEvid.length === 0}
                 title={otherEvid.length === 0 ? 'Debes subir al menos una evidencia antes de marcar como terminado' : undefined}
               >
-                <Check className="h-4 w-4 mr-2" />
+                {transitioning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
                 Marcar terminado
               </Button>
             )}
@@ -338,7 +338,7 @@ export function AdminMaintenanceDetail({
             {nextStatuses.includes('pendiente') && (
               <Button size="default" variant="outline" className="w-full sm:w-auto border-blue-400 text-blue-600 hover:bg-blue-600 hover:text-white font-semibold shadow-sm px-5 transition-colors"
                 onClick={() => transition('pendiente')} disabled={transitioning}>
-                <RotateCcw className="h-4 w-4 mr-2" />
+                {transitioning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
                 Reabrir
               </Button>
             )}
@@ -362,12 +362,12 @@ export function AdminMaintenanceDetail({
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Técnico</Label>
+                <Label htmlFor="assign-tecnico">Técnico</Label>
                 {technicians.length === 0 ? (
                   <p className="text-xs text-zinc-400">No hay técnicos disponibles registrados.</p>
                 ) : (
                   <Select value={assignTecnicoId} onValueChange={(v) => v && setAssignTecnicoId(v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecciona técnico">
+                    <SelectTrigger id="assign-tecnico"><SelectValue placeholder="Selecciona técnico">
                       {assignTecnicoId ? (technicians.find((t) => t.id === assignTecnicoId)?.full_name ?? technicians.find((t) => t.id === assignTecnicoId)?.email) : undefined}
                     </SelectValue></SelectTrigger>
                     <SelectContent>
@@ -381,8 +381,9 @@ export function AdminMaintenanceDetail({
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label>Fecha término estimada</Label>
+                <Label htmlFor="assign-fecha">Fecha término estimada</Label>
                 <Input
+                  id="assign-fecha"
                   type="date"
                   value={fechaTermino}
                   min={ticket.fecha_solicitud}
@@ -391,8 +392,9 @@ export function AdminMaintenanceDetail({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Comentario (opcional)</Label>
+              <Label htmlFor="assign-comment">Comentario (opcional)</Label>
               <Textarea
+                id="assign-comment"
                 value={assignComment}
                 onChange={(e) => setAssignComment(e.target.value)}
                 rows={2}
@@ -456,9 +458,9 @@ export function AdminMaintenanceDetail({
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1.5">
-              <Label>Técnico</Label>
+              <Label htmlFor="reassign-tecnico">Técnico</Label>
               <Select value={reassignTecnicoId} onValueChange={(v) => v && setReassignTecnicoId(v)}>
-                <SelectTrigger><SelectValue placeholder="Selecciona técnico">
+                <SelectTrigger id="reassign-tecnico"><SelectValue placeholder="Selecciona técnico">
                   {reassignTecnicoId ? (technicians.find((t) => t.id === reassignTecnicoId)?.full_name ?? technicians.find((t) => t.id === reassignTecnicoId)?.email) : undefined}
                 </SelectValue></SelectTrigger>
                 <SelectContent>
@@ -469,8 +471,9 @@ export function AdminMaintenanceDetail({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Comentario (opcional)</Label>
+              <Label htmlFor="reassign-comment">Comentario (opcional)</Label>
               <Textarea
+                id="reassign-comment"
                 value={reassignComment}
                 onChange={(e) => setReassignComment(e.target.value)}
                 rows={2}

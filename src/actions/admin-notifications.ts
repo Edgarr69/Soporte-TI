@@ -2,7 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { AdminNotificationType, AdminNotificationModule } from '@/lib/types'
+import { isAdminAny } from '@/lib/types'
+import type { AdminNotificationType, AdminNotificationModule, Role } from '@/lib/types'
 
 interface CreateAdminNotificationParams {
   title: string
@@ -19,6 +20,9 @@ interface CreateAdminNotificationParams {
 
 export async function createAdminNotification(params: CreateAdminNotificationParams) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
   const { error } = await supabase.rpc('insert_admin_notification', {
     p_title:        params.title,
     p_message:      params.message      ?? null,
@@ -36,11 +40,33 @@ export async function createAdminNotification(params: CreateAdminNotificationPar
 
 export async function markAllAdminNotificationsRead() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile || !isAdminAny(profile.role as Role)) return
+
   await supabase.rpc('mark_all_admin_notifications_read')
   revalidatePath('/admin/historial')
 }
 
 export async function markOneAdminNotificationRead(id: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile || !isAdminAny(profile.role as Role)) return
+
   await supabase.rpc('mark_admin_notification_read', { p_notification_id: id })
 }

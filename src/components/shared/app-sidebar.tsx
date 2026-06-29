@@ -241,6 +241,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
             variant="ghost"
             size={isOpen ? 'sm' : 'icon-sm'}
             onClick={handleLogout}
+            aria-label={isOpen ? undefined : 'Cerrar sesión'}
             className={cn(
               'text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30',
               isOpen ? 'flex justify-start w-full gap-2' : 'mx-auto',

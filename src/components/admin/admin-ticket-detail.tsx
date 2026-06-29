@@ -36,11 +36,14 @@ interface Props {
   history: Record<string, unknown>[]
   comments: Record<string, unknown>[]
   userId: string
+  adminName: string
 }
 
-export function AdminTicketDetail({ ticket: initialTicket, history, comments: initialComments, userId }: Props) {
+export function AdminTicketDetail({ ticket: initialTicket, history, comments: initialComments, userId, adminName }: Props) {
   const router  = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const [isStatusPending,     startStatusTransition]     = useTransition()
+  const [isResolutionPending, startResolutionTransition] = useTransition()
+  const [isCommentPending,    startCommentTransition]    = useTransition()
 
   const t = initialTicket as {
     id: string; folio: string; status: TicketStatus; priority: Priority
@@ -106,7 +109,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
 
   function handleChangeStatus() {
     if (!newStatus) return
-    startTransition(async () => {
+    startStatusTransition(async () => {
       const res = await changeTicketStatus(t.id, newStatus as TicketStatus, statusComment || undefined)
       if (res.error) { toast.error(res.error); return }
       toast.success(`Estado cambiado a "${STATUS_LABELS[newStatus as TicketStatus]}"`)
@@ -116,7 +119,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
   }
 
   function handleSaveResolution() {
-    startTransition(async () => {
+    startResolutionTransition(async () => {
       const res = await updateTicketResolution(t.id, {
         resolution_summary:         resSummary,
         visible_resolution_summary: visibleRes,
@@ -129,11 +132,12 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
 
   function handleAddComment() {
     if (!commentBody.trim()) return
-    startTransition(async () => {
+    startCommentTransition(async () => {
       const res = await addComment(t.id, commentBody.trim(), isInternal)
       if (res.error) { toast.error(res.error); return }
       toast.success('Comentario agregado.')
       setCommentBody('')
+      router.refresh()
       setComments((prev) => [
         ...prev,
         {
@@ -141,7 +145,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
           body: commentBody.trim(),
           is_internal: isInternal,
           created_at: new Date().toISOString(),
-          author: { full_name: 'Sistemas TI', email: '' },
+          author: { full_name: adminName, email: '' },
         } as Record<string, unknown>,
       ])
     })
@@ -151,7 +155,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
     <div className="space-y-6 pb-20 lg:pb-0">
       {/* Encabezado */}
       <div className="flex items-start gap-3">
-        <LinkButton href="/admin/sistemas/tickets" variant="ghost" size="icon" className="-ml-2 mt-0.5">
+        <LinkButton href="/admin/sistemas/tickets" variant="ghost" size="icon" className="-ml-2 mt-0.5" aria-label="Volver a tickets">
           <ArrowLeft className="h-4 w-4" />
         </LinkButton>
         <div className="flex-1 min-w-0">
@@ -266,7 +270,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
                   value={commentBody}
                   onChange={(e) => setCommentBody(e.target.value)}
                   rows={3}
-                  disabled={isPending}
+                  disabled={isCommentPending}
                 />
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer">
@@ -281,9 +285,9 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
                   <Button
                     size="sm"
                     onClick={handleAddComment}
-                    disabled={!commentBody.trim() || isPending}
+                    disabled={!commentBody.trim() || isCommentPending}
                   >
-                    {isPending && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
+                    {isCommentPending && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
                     <MessageSquare className="h-3 w-3 mr-1.5" />
                     Comentar
                   </Button>
@@ -303,7 +307,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
                 <Select
                   value={newStatus}
                   onValueChange={(v) => setNewStatus(v as TicketStatus)}
-                  disabled={isPending || !allowedStatuses.length}
+                  disabled={isStatusPending || !allowedStatuses.length}
                 >
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Nuevo estado…">
@@ -318,7 +322,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
                 </Select>
                 <Button
                   onClick={handleChangeStatus}
-                  disabled={!newStatus || isPending}
+                  disabled={!newStatus || isStatusPending}
                   className={cn(
                     'w-full sm:w-auto font-semibold shadow-sm px-5 transition-colors',
                     newStatus === 'resuelto'   && 'bg-green-600 hover:bg-green-700 text-white',
@@ -329,7 +333,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
                     !newStatus                 && 'opacity-50 cursor-not-allowed',
                   )}
                 >
-                  {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  {isStatusPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                   Cambiar estado
                 </Button>
               </div>
@@ -338,7 +342,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
                 value={statusComment}
                 onChange={(e) => setStatusComment(e.target.value)}
                 rows={2}
-                disabled={isPending}
+                disabled={isStatusPending}
               />
             </CardContent>
           </Card>
@@ -350,41 +354,44 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
             </CardHeader>
             <CardContent className="pt-0 space-y-4">
               <div className="space-y-1.5">
-                <Label className="text-xs flex items-center gap-1">
+                <Label htmlFor="res-summary" className="text-xs flex items-center gap-1">
                   <Lock className="h-3 w-3" /> Solución técnica (solo admin)
                 </Label>
                 <Textarea
+                  id="res-summary"
                   placeholder="Documenta detalladamente la solución aplicada…"
                   value={resSummary}
                   onChange={(e) => setResSummary(e.target.value)}
                   rows={4}
-                  disabled={isPending}
+                  disabled={isResolutionPending}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Solución visible para el usuario (opcional)</Label>
+                <Label htmlFor="res-visible" className="text-xs">Solución visible para el usuario (opcional)</Label>
                 <Textarea
+                  id="res-visible"
                   placeholder="Resumen de la solución para mostrar al usuario…"
                   value={visibleRes}
                   onChange={(e) => setVisibleRes(e.target.value)}
                   rows={3}
-                  disabled={isPending}
+                  disabled={isResolutionPending}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs flex items-center gap-1">
+                <Label htmlFor="res-notes" className="text-xs flex items-center gap-1">
                   <Lock className="h-3 w-3" /> Observaciones técnicas (solo admin)
                 </Label>
                 <Textarea
+                  id="res-notes"
                   placeholder="Notas técnicas adicionales, pasos de diagnóstico, etc…"
                   value={techNotes}
                   onChange={(e) => setTechNotes(e.target.value)}
                   rows={3}
-                  disabled={isPending}
+                  disabled={isResolutionPending}
                 />
               </div>
-              <Button onClick={handleSaveResolution} disabled={isPending} className="w-full">
-                {isPending && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
+              <Button onClick={handleSaveResolution} disabled={isResolutionPending} className="w-full">
+                {isResolutionPending && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
                 Guardar información
               </Button>
             </CardContent>

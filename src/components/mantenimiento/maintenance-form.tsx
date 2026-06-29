@@ -66,6 +66,14 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
       toast.error('Completa todos los campos obligatorios.')
       return
     }
+    if (servicio.trim().length < 5) {
+      toast.error('El nombre del servicio debe tener al menos 5 caracteres.')
+      return
+    }
+    if (descripcion.trim().length < 20) {
+      toast.error('La descripción debe tener al menos 20 caracteres.')
+      return
+    }
 
     const today = new Date().toISOString().split('T')[0]
     if (fechaSolicitud < today) {
@@ -96,7 +104,6 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
 
     toast.success(`Solicitud ${result.ticket?.folio} creada correctamente.`)
     router.push('/dashboard')
-    router.refresh()
   }
 
   return (
@@ -111,7 +118,7 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Departamento *</Label>
+              <Label htmlFor="form-dept">Departamento *</Label>
               <Select
                 value={deptId}
                 onValueChange={(v) => {
@@ -122,7 +129,7 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
                 }}
                 disabled={loading || !!profile.department_id}
               >
-                <SelectTrigger>
+                <SelectTrigger id="form-dept">
                   <SelectValue placeholder="Selecciona departamento">
                     {deptName || undefined}
                   </SelectValue>
@@ -139,7 +146,7 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
             </div>
 
             <div className="space-y-1.5">
-              <Label>Área afectada *</Label>
+              <Label htmlFor="form-area">Área afectada *</Label>
               <Select
                 value={areaId}
                 onValueChange={(v) => {
@@ -150,7 +157,7 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
                 }}
                 disabled={loading}
               >
-                <SelectTrigger>
+                <SelectTrigger id="form-area">
                   <SelectValue placeholder="Selecciona área">
                     {areaName || undefined}
                   </SelectValue>
@@ -280,7 +287,7 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
               <input
                 ref={photoInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/jpg,image/png"
                 className="hidden"
                 disabled={loading}
                 onChange={handlePhotoChange}

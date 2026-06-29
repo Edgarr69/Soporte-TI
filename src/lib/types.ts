@@ -403,8 +403,6 @@ export interface MaintenanceTicket {
   tecnico_id: string | null
   tecnico_nombre_snapshot: string | null
   pdf_path: string | null
-  has_photo: boolean
-  photo_path: string | null
   approved_at: string | null
   approved_by: string | null
   assigned_at: string | null

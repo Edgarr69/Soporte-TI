@@ -134,14 +134,16 @@ export async function setDepartmentManager(department_id: string, manager_name: 
     .single()
 
   if (existing) {
-    await supabase
+    const { error } = await supabase
       .from('department_managers')
       .update({ manager_name: trimmedName })
       .eq('id', existing.id)
+    if (error) return { error: 'Error al actualizar el encargado' }
   } else {
-    await supabase
+    const { error } = await supabase
       .from('department_managers')
       .insert({ department_id, manager_name: trimmedName, is_default: true })
+    if (error) return { error: 'Error al crear el encargado' }
   }
 
   revalidatePath('/admin/mantenimiento/catalogos')

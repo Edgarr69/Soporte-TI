@@ -253,9 +253,9 @@ function CreateUserForm({
             </div>
             {canPickRole && (
               <div className="space-y-1.5">
-                <Label>Rol</Label>
+                <Label htmlFor="new-rol">Rol</Label>
                 <Select value={role} onValueChange={(v) => v && setRole(v as Role)} disabled={submitting}>
-                  <SelectTrigger><SelectValue>{ROLE_LABELS[role]}</SelectValue></SelectTrigger>
+                  <SelectTrigger id="new-rol"><SelectValue>{ROLE_LABELS[role]}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {createRoleOptions.map((r) => (
                       <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
@@ -272,9 +272,9 @@ function CreateUserForm({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Departamento</Label>
+              <Label htmlFor="new-dept">Departamento</Label>
               <Select value={deptId} onValueChange={(v) => v && setDeptId(v)} disabled={submitting}>
-                <SelectTrigger>
+                <SelectTrigger id="new-dept">
                   <SelectValue placeholder="Sin asignar">
                     {deptId ? departments.find((d) => d.id === deptId)?.name : undefined}
                   </SelectValue>
@@ -285,8 +285,8 @@ function CreateUserForm({
               </Select>
             </div>
             <div className="space-y-1.5 sm:col-span-1">
-              <Label>Encargado del departamento</Label>
-              <Input value={encargado} onChange={(e) => setEncargado(e.target.value)} disabled={submitting} />
+              <Label htmlFor="new-encargado">Encargado del departamento</Label>
+              <Input id="new-encargado" value={encargado} onChange={(e) => setEncargado(e.target.value)} disabled={submitting} />
             </div>
           </div>
 
