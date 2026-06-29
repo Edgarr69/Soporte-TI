@@ -225,5 +225,6 @@ export async function setDepartmentAllowedTypes(
 
   if (error) return { error: error.message }
   revalidatePath('/admin/mantenimiento/catalogos')
+  revalidateTag('departments', {})
   return { success: true }
 }

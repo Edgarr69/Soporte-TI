@@ -5,9 +5,7 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { X, User, Calendar, Tag, FileText, ArrowRight } from 'lucide-react'
 import type { AdminNotification, AdminNotificationType, Notification, NotificationType } from '@/lib/types'
-import { cn } from '@/lib/utils'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { cn, formatLocale } from '@/lib/utils'
 
 // ─── Etiquetas ────────────────────────────────────────────
 
@@ -134,7 +132,7 @@ interface Props {
 }
 
 export function NotifDetailModal({ item, onClose }: Props) {
-  const date     = format(new Date(item.created_at), "EEEE d 'de' MMMM yyyy, HH:mm", { locale: es })
+  const date     = formatLocale(item.created_at, "EEEE d 'de' MMMM yyyy, HH:mm")
   const mod      = item.module
   const modColor = mod ? (MODULE_COLORS[mod] ?? MODULE_COLORS.global) : MODULE_COLORS.global
   const modLabel = mod ? (MODULE_LABELS[mod] ?? mod) : 'General'

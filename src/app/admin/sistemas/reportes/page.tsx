@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
-import { AdminReportsView } from '@/components/admin/admin-reports'
+import { AdminReportsViewLazy } from '@/components/admin/admin-reports-lazy'
 import { getCachedSistemasStats } from '@/lib/admin-dashboard-cache'
 import { getAuthedProfile } from '@/lib/auth'
 
@@ -30,7 +30,7 @@ export default async function AdminReportesPage() {
     .map((u) => ({ email: u.email, name: u.full_name ?? u.email, count: u.total }))
 
   return (
-    <AdminReportsView
+    <AdminReportsViewLazy
       monthly={monthly}
       byCategory={byCategory}
       byPriority={byPriority}
@@ -44,3 +44,4 @@ export default async function AdminReportesPage() {
     />
   )
 }
+

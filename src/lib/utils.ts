@@ -35,6 +35,10 @@ export function calcMinutes(from: string | null, to: string | null): number | nu
   return differenceInMinutes(new Date(to), new Date(from))
 }
 
+export function formatLocale(date: string | Date, fmt: string): string {
+  return format(new Date(date), fmt, { locale: es })
+}
+
 export function initials(name: string | null): string {
   if (!name) return '?'
   return name

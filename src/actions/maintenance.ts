@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import type { MaintenanceStatus, MaintenanceType } from '@/lib/types'
 import { MAINTENANCE_TRANSITIONS } from '@/lib/types'
 import { createAdminNotification } from '@/actions/admin-notifications'
@@ -192,8 +192,8 @@ export async function createMaintenanceTicket(formData: FormData) {
   if (notifResult.error) console.error('[createMaintenanceTicket] notification insert failed:', notifResult.error.message)
 
   revalidatePath('/mis-tickets')
-  revalidatePath('/dashboard')
   revalidatePath('/notificaciones')
+  revalidateTag('admin-mantenimiento-tickets', {})
   return { ticket }
 }
 
@@ -361,6 +361,7 @@ export async function changeMaintenanceStatus(
   revalidatePath('/admin/mantenimiento/tickets')
   revalidatePath(`/admin/mantenimiento/tickets/${ticketId}`)
   revalidatePath('/mis-tickets')
+  revalidateTag('admin-mantenimiento-tickets', {})
   return { success: true }
 }
 

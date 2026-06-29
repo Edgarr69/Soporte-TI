@@ -12,9 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
 import type { Notification, AdminNotification, Role } from '@/lib/types'
-import { cn } from '@/lib/utils'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { cn, formatLocale } from '@/lib/utils'
 import { NotifDetailModal, toNotifItem, toAdminNotifItem, type NotifItem } from './notif-detail-modal'
 
 const ADMIN_ROLES: Role[] = ['admin_sistemas', 'admin_mantenimiento', 'super_admin']
@@ -191,7 +189,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
                         </p>
                       )}
                       <p className="text-[10px] text-zinc-400 mt-0.5">
-                        {format(new Date(n.created_at), "d MMM, HH:mm", { locale: es })}
+                        {formatLocale(n.created_at, "d MMM, HH:mm")}
                       </p>
                     </div>
                   </div>

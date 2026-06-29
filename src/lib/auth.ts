@@ -13,14 +13,26 @@ import { createClient } from '@/lib/supabase/server'
  */
 export const getAuthedProfile = cache(async () => {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+
+  // Ambas queries en paralelo — RLS de profiles filtra por auth.uid() automáticamente
+  const [{ data: { user } }, { data: profile }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('profiles')
+      .select('*, department:departments(id, name, allowed_ticket_types)')
+      .single(),
+  ])
+
   if (!user) return { supabase, user: null, profile: null }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, department:departments(id, name, allowed_ticket_types)')
-    .eq('id', user.id)
-    .single()
-
   return { supabase, user, profile }
+})
+
+export const getUnreadCount = cache(async (userId: string) => {
+  const supabase = await createClient()
+  const { count } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_read', false)
+  return count ?? 0
 })

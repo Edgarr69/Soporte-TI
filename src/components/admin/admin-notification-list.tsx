@@ -6,9 +6,7 @@ import { Bell } from 'lucide-react'
 import { markAllAdminNotificationsRead, markOneAdminNotificationRead } from '@/actions/admin-notifications'
 import { NotifDetailModal, toAdminNotifItem, type NotifItem } from '@/components/shared/notif-detail-modal'
 import type { AdminNotification, AdminNotificationModule, AdminNotificationType, Role } from '@/lib/types'
-import { cn } from '@/lib/utils'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { cn, formatLocale } from '@/lib/utils'
 
 // ─── Inferencia de módulo ─────────────────────────────────
 
@@ -52,7 +50,7 @@ function NotifCard({
   onClick: () => void
 }) {
   const mod  = effectiveModule(n)
-  const date = format(new Date(n.created_at), "d MMM yyyy, HH:mm", { locale: es })
+  const date = formatLocale(n.created_at, "d MMM yyyy, HH:mm")
 
   return (
     <button

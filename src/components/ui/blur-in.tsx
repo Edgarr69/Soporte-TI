@@ -1,5 +1,3 @@
-'use client'
-
 import { cn } from '@/lib/utils'
 
 interface BlurInProps {
@@ -18,7 +16,7 @@ export function BlurIn({ word, className, duration = 1 }: BlurInProps) {
       className={cn(className)}
       style={{
         animation: `blur-in ${duration}s ease-out forwards`,
-        opacity: 0,
+        opacity: 0.01,
       }}
     >
       {word}

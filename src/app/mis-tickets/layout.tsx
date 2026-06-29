@@ -3,18 +3,14 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { AppSidebar } from '@/components/shared/app-sidebar'
 import { TopBar } from '@/components/shared/top-bar'
-import { getAuthedProfile } from '@/lib/auth'
+import { getAuthedProfile, getUnreadCount } from '@/lib/auth'
 import type { Role, Profile } from '@/lib/types'
 
 export default async function MisTicketsLayout({ children }: { children: React.ReactNode }) {
-  const { supabase, user, profile } = await getAuthedProfile()
+  const { user, profile } = await getAuthedProfile()
   if (!user || !profile) redirect('/login')
 
-  const { count: unreadCount } = await supabase
-    .from('notifications')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('is_read', false)
+  const unreadCount = await getUnreadCount(user.id)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100/80 dark:from-zinc-950 dark:to-zinc-900/80">

@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { calculatePriority } from '@/lib/priority'
 import type { NewTicketFormData, AdminUpdateTicketData, TicketStatus } from '@/lib/types'
 import { TICKET_TRANSITIONS } from '@/lib/types'
@@ -85,6 +85,7 @@ export async function createTicket(data: NewTicketFormData) {
 
   revalidatePath('/mis-tickets')
   revalidatePath('/notificaciones')
+  revalidateTag('admin-sistemas-tickets', {})
   return { ticket }
 }
 
@@ -219,7 +220,8 @@ export async function changeTicketStatus(
 
   revalidatePath('/admin/sistemas/tickets')
   revalidatePath(`/admin/sistemas/tickets/${ticketId}`)
-  revalidatePath('/tickets')
+  revalidatePath('/mis-tickets')
+  revalidateTag('admin-sistemas-tickets', {})
   return { success: true }
 }
 

@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 import { Wrench, Monitor, HardHat, ArrowRight } from 'lucide-react'
 import type { ProfileExtended } from '@/lib/types'
