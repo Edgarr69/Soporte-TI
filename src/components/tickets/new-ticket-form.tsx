@@ -76,7 +76,7 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
     })
 
     if (result.error) {
-      toast.error('Error al crear el ticket: ' + result.error)
+      toast.error('No se pudo crear el ticket. Por favor intenta de nuevo.')
       setLoading(false)
       return
     }

@@ -1,22 +1,14 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { MisTicketsTabs } from '@/components/tickets/mis-tickets-tabs'
 import { LinkButton } from '@/components/ui/link-button'
 import { ChevronLeft } from 'lucide-react'
+import { getAuthedProfile } from '@/lib/auth'
 
 export default async function MisTicketsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, department:departments(id, name, allowed_ticket_types)')
-    .eq('id', user.id)
-    .single()
-
   if (!profile?.first_login_completed) redirect('/completar-perfil')
 
   const [{ data: sysTickets }, { data: maintTickets }] =
@@ -33,6 +25,11 @@ export default async function MisTicketsPage() {
         .order('created_at', { ascending: false }),
     ])
 
+  const normalizedSysTickets = (sysTickets ?? []).map((t) => ({
+    ...t,
+    ticket_categories:    Array.isArray(t.ticket_categories)    ? (t.ticket_categories[0]    ?? null) : t.ticket_categories,
+    ticket_subcategories: Array.isArray(t.ticket_subcategories) ? (t.ticket_subcategories[0] ?? null) : t.ticket_subcategories,
+  }))
   const generalTickets = (maintTickets ?? []).filter((t) => t.type === 'general')
   const maqTickets     = (maintTickets ?? []).filter((t) => t.type === 'maquinaria')
 
@@ -46,13 +43,10 @@ export default async function MisTicketsPage() {
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Mis tickets</h1>
         </div>
         <MisTicketsTabs
-          sysTickets={(sysTickets ?? []) as unknown as Parameters<typeof MisTicketsTabs>[0]['sysTickets']}
+          sysTickets={normalizedSysTickets as unknown as Parameters<typeof MisTicketsTabs>[0]['sysTickets']}
           generalTickets={generalTickets ?? []}
           maqTickets={maqTickets ?? []}
-          canMaquinaria={
-            ((profile?.department as { allowed_ticket_types?: string[] | null } | null)
-              ?.allowed_ticket_types ?? ['general', 'maquinaria']).includes('maquinaria')
-          }
+          canMaquinaria={(profile?.department?.allowed_ticket_types ?? ['general', 'maquinaria']).includes('maquinaria')}
         />
     </main>
   )

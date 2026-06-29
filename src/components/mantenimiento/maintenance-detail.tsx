@@ -139,6 +139,7 @@ export function MaintenanceDetail({
     setCancelling(true)
     const r = await cancelMaintenanceTicket(ticket.id, cancelReason)
     if (r.error) { toast.error(r.error); setCancelling(false); return }
+    setCancelling(false)
     toast.success('Solicitud cancelada')
     setShowCancel(false)
     router.refresh()
@@ -291,6 +292,7 @@ export function MaintenanceDetail({
                 onClick={submitComment}
                 disabled={submitting || !commentBody.trim()}
                 className="self-end"
+                aria-label="Enviar mensaje"
               >
                 <Send className="h-4 w-4" />
               </Button>

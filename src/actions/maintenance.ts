@@ -39,7 +39,11 @@ export async function createMaintenanceTicket(formData: FormData) {
   if (!user) return { error: 'No autenticado' }
 
   // Parsear campos del formulario
-  const type                    = formData.get('type') as MaintenanceType
+  const typeRaw = formData.get('type') as string
+  const VALID_TYPES: MaintenanceType[] = ['general', 'maquinaria']
+  if (!VALID_TYPES.includes(typeRaw as MaintenanceType))
+    return { error: 'Tipo de solicitud no válido' }
+  const type = typeRaw as MaintenanceType
   const department_id           = formData.get('department_id') as string
   const department_name_snapshot = formData.get('department_name_snapshot') as string
   const area_id                 = formData.get('area_id') as string
@@ -51,6 +55,12 @@ export async function createMaintenanceTicket(formData: FormData) {
   const fecha_solicitud         = formData.get('fecha_solicitud') as string
   const fecha_termino_estimada  = (formData.get('fecha_termino_estimada') as string) || null
   const photoFile               = formData.get('photo') as File | null
+
+  // Validar longitudes de texto libre (el cliente ya valida, pero el endpoint es público)
+  if (!servicio?.trim() || servicio.trim().length < 3) return { error: 'El servicio es obligatorio (mínimo 3 caracteres)' }
+  if (servicio.length > 200) return { error: 'El servicio no puede superar 200 caracteres' }
+  if (!descripcion?.trim() || descripcion.trim().length < 10) return { error: 'La descripción es obligatoria (mínimo 10 caracteres)' }
+  if (descripcion.length > 5000) return { error: 'La descripción no puede superar 5000 caracteres' }
 
   // Validar fechas — usar zona horaria de México para que el corte sea medianoche local
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date())
@@ -104,7 +114,10 @@ export async function createMaintenanceTicket(formData: FormData) {
     .select('id, folio, created_at')
     .single()
 
-  if (insertErr || !ticket) return { error: insertErr?.message ?? 'Error al crear solicitud' }
+  if (insertErr || !ticket) {
+    console.error('[createMaintenanceTicket] insert error:', insertErr?.message)
+    return { error: 'Error al crear la solicitud. Por favor intenta de nuevo.' }
+  }
 
   const serviceClient = createAdminClient()
 
@@ -139,42 +152,44 @@ export async function createMaintenanceTicket(formData: FormData) {
     }
   }
 
-  // Historial inicial
-  await supabase.from('maintenance_status_history').insert({
-    ticket_id:   ticket.id,
-    changed_by:  user.id,
-    from_status: null,
-    to_status:   'pendiente',
-    comment:     'Solicitud creada',
-  })
+  // Historial y perfil en paralelo
+  const [, { data: creatorProfileM }] = await Promise.all([
+    supabase.from('maintenance_status_history').insert({
+      ticket_id:   ticket.id,
+      changed_by:  user.id,
+      from_status: null,
+      to_status:   'pendiente',
+      comment:     'Solicitud creada',
+    }),
+    supabase.from('profiles').select('full_name, email').eq('id', user.id).single(),
+  ])
+  const profileName  = creatorProfileM?.full_name ?? creatorProfileM?.email
+  const creatorNameM = profileName ?? 'Tú'
+  const actorNameM   = profileName ?? 'Usuario'
 
-  // Notificación al usuario
-  const { data: creatorProfileM } = await supabase
-    .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const creatorNameM = creatorProfileM?.full_name ?? creatorProfileM?.email ?? 'Tú'
-  const { error: notifErr } = await supabase.from('notifications').insert({
-    user_id:   user.id,
-    ticket_id: null,
-    type:      'ticket_created',
-    module:    'mantenimiento',
-    title:     'Solicitud de mantenimiento creada',
-    body:      `${creatorNameM} ha creado una solicitud de mantenimiento pendiente de revisión`,
-  })
-  if (notifErr) console.error('[createMaintenanceTicket] notification insert failed:', notifErr.message)
-
-  // Admin notification
-  const actorNameM = creatorProfileM?.full_name ?? creatorProfileM?.email ?? 'Usuario'
-  await createAdminNotification({
-    title:       'Nueva solicitud de mantenimiento',
-    message:     `${actorNameM} solicitó "${servicio}" (${ticket.folio})`,
-    type:        'maintenance_created',
-    module:      'mantenimiento',
-    actorId:     user.id,
-    actorName:   actorNameM,
-    targetId:    ticket.id,
-    targetType:  'maintenance_ticket',
-    targetFolio: ticket.folio,
-  })
+  // Notificación al usuario y admin en paralelo
+  const [notifResult] = await Promise.all([
+    supabase.from('notifications').insert({
+      user_id:   user.id,
+      ticket_id: null,
+      type:      'ticket_created',
+      module:    'mantenimiento',
+      title:     'Solicitud de mantenimiento creada',
+      body:      `${creatorNameM} ha creado una solicitud de mantenimiento pendiente de revisión`,
+    }),
+    createAdminNotification({
+      title:       'Nueva solicitud de mantenimiento',
+      message:     `${actorNameM} solicitó "${servicio}" (${ticket.folio})`,
+      type:        'maintenance_created',
+      module:      'mantenimiento',
+      actorId:     user.id,
+      actorName:   actorNameM,
+      targetId:    ticket.id,
+      targetType:  'maintenance_ticket',
+      targetFolio: ticket.folio,
+    }),
+  ])
+  if (notifResult.error) console.error('[createMaintenanceTicket] notification insert failed:', notifResult.error.message)
 
   revalidatePath('/mis-tickets')
   revalidatePath('/dashboard')
@@ -201,7 +216,7 @@ export async function changeMaintenanceStatus(
 
   const { data: adminProfile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, full_name, email')
     .eq('id', user.id)
     .single()
 
@@ -284,9 +299,7 @@ export async function changeMaintenanceStatus(
     terminado:   'Terminado',
     cancelado:   'Cancelado',
   }
-  const { data: adminProfileNotif } = await supabase
-    .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const adminNotifNameM = adminProfileNotif?.full_name ?? adminProfileNotif?.email ?? 'El administrador'
+  const adminNotifNameM = adminProfile?.full_name ?? adminProfile?.email ?? 'El administrador'
   const wasReopened = newStatus === 'pendiente' &&
     (ticket.status === 'terminado' || ticket.status === 'cancelado')
   const maintVerbsNotif: Record<MaintenanceStatus, string> = {
@@ -307,7 +320,7 @@ export async function changeMaintenanceStatus(
   })
 
   // Admin notification
-  const adminNameM = adminProfileNotif?.full_name ?? adminProfileNotif?.email ?? 'Admin'
+  const adminNameM = adminProfile?.full_name ?? adminProfile?.email ?? 'Admin'
   const maintAdminType = newStatus === 'terminado' ? 'maintenance_closed'
     : newStatus === 'cancelado' ? 'maintenance_cancelled'
     : newStatus === 'asignado' ? 'maintenance_assigned'
@@ -375,13 +388,16 @@ export async function addMaintenanceComment(
   if (!isOwner && !isAdmin && !isTecnico) return { error: 'Sin permiso' }
   if (isInternal && !isAdmin) return { error: 'Sin permiso para comentarios internos' }
 
+  if (!body?.trim()) return { error: 'El comentario no puede estar vacío' }
+  if (body.length > 5000) return { error: 'El comentario no puede superar 5000 caracteres' }
+
   const { error } = await supabase.from('maintenance_comments').insert({
     ticket_id:   ticketId,
     author_id:   user.id,
     body,
     is_internal: isInternal,
   })
-  if (error) return { error: error.message }
+  if (error) return { error: 'Error al guardar el comentario' }
 
   if (!isInternal && !isOwner) {
     await supabase.from('notifications').insert({
@@ -466,20 +482,19 @@ export async function uploadEvidencia(
   const files = allFiles.slice(0, EVIDENCIA_MAX_FILES)
 
   const results: string[] = []
-  for (const file of files) {
-    if (!EVIDENCIA_ALLOWED_MIMES.includes(file.type)) continue
-    if (file.size > EVIDENCIA_MAX_SIZE) continue
+  await Promise.all(files.map(async (file) => {
+    if (!EVIDENCIA_ALLOWED_MIMES.includes(file.type)) return
+    if (file.size > EVIDENCIA_MAX_SIZE) return
 
     const ext      = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
     const filePath = `maintenance/${ticketId}/evidencia-${crypto.randomUUID()}.${ext}`
     const safeName = path.basename(file.name).slice(0, 255)
 
-    const arrayBuffer = await file.arrayBuffer()
     const { error: upErr } = await supabase.storage
       .from('maintenance-docs')
-      .upload(filePath, arrayBuffer, { contentType: file.type, upsert: false })
+      .upload(filePath, await file.arrayBuffer(), { contentType: file.type, upsert: false })
 
-    if (upErr) continue
+    if (upErr) return
 
     const { error: dbErr } = await supabase.from('maintenance_evidencias').insert({
       ticket_id:   ticketId,
@@ -493,11 +508,11 @@ export async function uploadEvidencia(
 
     if (dbErr) {
       await supabase.storage.from('maintenance-docs').remove([filePath])
-      continue
+      return
     }
 
     results.push(filePath)
-  }
+  }))
 
   revalidatePath(`/mantenimiento/${ticketId}`)
   revalidatePath(`/admin/mantenimiento/tickets/${ticketId}`)
@@ -664,6 +679,11 @@ export async function reassignTecnico(
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (!profile || !['admin_mantenimiento', 'super_admin'].includes(profile.role))
     return { error: 'Sin permiso' }
+
+  const { data: tecnicoProfile } = await supabase
+    .from('profiles').select('role').eq('id', tecnicoId).single()
+  if (!tecnicoProfile || tecnicoProfile.role !== 'tecnico_mantenimiento')
+    return { error: 'El usuario seleccionado no es un técnico de mantenimiento' }
 
   const { error: updateErr } = await supabase
     .from('maintenance_tickets')

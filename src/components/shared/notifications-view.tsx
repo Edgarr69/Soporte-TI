@@ -38,7 +38,6 @@ export function NotificationsView({ initialNotifications, userId, role }: Props)
         if (role === 'admin_sistemas'      && row.module !== 'sistemas')      return
         if (role === 'admin_mantenimiento' && row.module !== 'mantenimiento') return
         setNotifications((prev) => prev.some((n) => n.id === row.id) ? prev : [row, ...prev])
-        router.refresh()
       })
       .subscribe()
 

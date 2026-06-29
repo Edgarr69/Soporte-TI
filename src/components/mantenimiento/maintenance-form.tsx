@@ -274,6 +274,7 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
                 type="button"
                 onClick={removePhoto}
                 disabled={loading}
+                aria-label="Quitar foto"
                 className="absolute top-1.5 right-1.5 rounded-full bg-zinc-900/70 p-1 text-white hover:bg-zinc-900 transition-colors"
               >
                 <X className="h-3.5 w-3.5" />

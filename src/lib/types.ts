@@ -85,8 +85,8 @@ export interface Profile {
   first_login_completed: boolean
   created_at: string
   updated_at: string
-  // joined (solo id+name, sin created_at, para compatibilidad con selects parciales)
-  department?: { id: string; name: string }
+  // joined (solo id+name+allowed_ticket_types, para compatibilidad con selects parciales)
+  department?: { id: string; name: string; allowed_ticket_types?: string[] | null }
 }
 
 export interface TicketCategory {

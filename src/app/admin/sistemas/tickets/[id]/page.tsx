@@ -26,21 +26,30 @@ export default async function AdminTicketDetailPage({ params }: Props) {
 
   if (!ticket) notFound()
 
-  const { data: history } = await supabase
-    .from('ticket_status_history')
-    .select('*, changer:profiles(full_name, email)')
-    .eq('ticket_id', id)
-    .order('created_at', { ascending: true })
+  const [{ data: history }, { data: comments }] = await Promise.all([
+    supabase
+      .from('ticket_status_history')
+      .select('*, changer:profiles(full_name, email)')
+      .eq('ticket_id', id)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('ticket_comments')
+      .select('*, author:profiles(full_name, email)')
+      .eq('ticket_id', id)
+      .order('created_at', { ascending: true }),
+  ])
 
-  const { data: comments } = await supabase
-    .from('ticket_comments')
-    .select('*, author:profiles(full_name, email)')
-    .eq('ticket_id', id)
-    .order('created_at', { ascending: true })
+  const normalizedTicket = {
+    ...ticket,
+    ticket_categories:    Array.isArray(ticket.ticket_categories)    ? (ticket.ticket_categories[0]    ?? null) : ticket.ticket_categories,
+    ticket_subcategories: Array.isArray(ticket.ticket_subcategories) ? (ticket.ticket_subcategories[0] ?? null) : ticket.ticket_subcategories,
+    user:                 Array.isArray(ticket.user)                 ? (ticket.user[0]                 ?? null) : ticket.user,
+    department:           Array.isArray(ticket.department)           ? (ticket.department[0]           ?? null) : ticket.department,
+  }
 
   return (
     <AdminTicketDetail
-      ticket={ticket as Record<string, unknown>}
+      ticket={normalizedTicket as Record<string, unknown>}
       history={history ?? []}
       comments={comments ?? []}
       userId={user.id}

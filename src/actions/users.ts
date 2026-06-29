@@ -117,11 +117,12 @@ export async function updateUserRole(targetUserId: string, newRole: Role) {
     return { error: 'No puedes cambiar tu propio rol' }
 
   if (isMantAdmin) {
-    // Verificar que el target no sea admin_sistemas
     const { data: targetProfile } = await supabase
       .from('profiles').select('role').eq('id', targetUserId).single()
-    if (targetProfile?.role === 'admin_sistemas')
-      return { error: 'No puedes cambiar el rol de un administrador de sistemas' }
+    // Solo puede cambiar rol de usuarios y técnicos; no puede tocar roles admin ni super_admin
+    const mantTargetableRoles: Role[] = ['usuario', 'tecnico_mantenimiento']
+    if (!targetProfile || !mantTargetableRoles.includes(targetProfile.role as Role))
+      return { error: 'Sin permiso para cambiar el rol de ese usuario' }
 
     const mantAllowedRoles: Role[] = ['usuario', 'tecnico_mantenimiento']
     if (!mantAllowedRoles.includes(newRole))

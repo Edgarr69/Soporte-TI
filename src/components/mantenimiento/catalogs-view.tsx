@@ -128,11 +128,12 @@ function AreasPanel({ areas, onSaved }: { areas: Area[]; onSaved: () => void }) 
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            aria-label="Nueva área"
             placeholder="Nueva área…"
             disabled={adding}
             onKeyDown={(e) => e.key === 'Enter' && add()}
           />
-          <Button size="sm" onClick={add} disabled={adding || !newName.trim()} title="Agregar área">
+          <Button size="sm" onClick={add} disabled={adding || !newName.trim()} aria-label="Agregar área" title="Agregar área">
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -147,10 +148,10 @@ function AreasPanel({ areas, onSaved }: { areas: Area[]; onSaved: () => void }) 
                     className="flex-1 h-7 text-sm"
                     autoFocus
                   />
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Guardar cambios" disabled={saving === a.id} onClick={() => saveEdit(a.id, a.is_active)}>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Guardar cambios" title="Guardar cambios" disabled={saving === a.id} onClick={() => saveEdit(a.id, a.is_active)}>
                     <Check className={cn('h-3.5 w-3.5 text-green-600', saving === a.id && 'animate-pulse')} />
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Cancelar edición" disabled={saving === a.id} onClick={() => setEditId(null)}>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Cancelar edición" title="Cancelar edición" disabled={saving === a.id} onClick={() => setEditId(null)}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </>
@@ -170,13 +171,13 @@ function AreasPanel({ areas, onSaved }: { areas: Area[]; onSaved: () => void }) 
                   <Badge variant="outline" className={cn('text-xs', a.is_active ? 'border-green-300 text-green-700' : 'border-zinc-300 text-zinc-500')}>
                     {a.is_active ? 'Activa' : 'Inactiva'}
                   </Badge>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Editar nombre" onClick={() => { setEditId(a.id); setEditName(a.name) }}>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Editar nombre" title="Editar nombre" onClick={() => { setEditId(a.id); setEditName(a.name) }}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title={a.is_active ? 'Desactivar área' : 'Activar área'} disabled={toggling === a.id} onClick={() => toggleActive(a)}>
                     {a.is_active ? <X className={cn('h-3.5 w-3.5 text-red-500', toggling === a.id && 'animate-pulse')} /> : <Check className={cn('h-3.5 w-3.5 text-green-600', toggling === a.id && 'animate-pulse')} />}
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" title="Eliminar área" onClick={() => setConfirmDelete(a.id)}>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" aria-label="Eliminar área" title="Eliminar área" onClick={() => setConfirmDelete(a.id)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </>
@@ -246,11 +247,12 @@ function CatsPanel({
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            aria-label="Nueva categoría"
             placeholder="Nueva categoría…"
             disabled={adding}
             onKeyDown={(e) => e.key === 'Enter' && add()}
           />
-          <Button size="sm" onClick={add} disabled={adding || !newName.trim()} title="Agregar categoría">
+          <Button size="sm" onClick={add} disabled={adding || !newName.trim()} aria-label="Agregar categoría" title="Agregar categoría">
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -260,10 +262,10 @@ function CatsPanel({
               {editId === c.id ? (
                 <>
                   <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 h-7 text-sm" autoFocus />
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Guardar cambios" disabled={saving === c.id} onClick={() => saveEdit(c.id, c.is_active)}>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Guardar cambios" title="Guardar cambios" disabled={saving === c.id} onClick={() => saveEdit(c.id, c.is_active)}>
                     <Check className={cn('h-3.5 w-3.5 text-green-600', saving === c.id && 'animate-pulse')} />
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Cancelar edición" disabled={saving === c.id} onClick={() => setEditId(null)}>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Cancelar edición" title="Cancelar edición" disabled={saving === c.id} onClick={() => setEditId(null)}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </>
@@ -273,7 +275,7 @@ function CatsPanel({
                   <Badge variant="outline" className={cn('text-xs', c.is_active ? 'border-green-300 text-green-700' : 'border-zinc-300 text-zinc-500')}>
                     {c.is_active ? 'Activa' : 'Inactiva'}
                   </Badge>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Editar nombre" onClick={() => { setEditId(c.id); setEditName(c.name) }}>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Editar nombre" title="Editar nombre" onClick={() => { setEditId(c.id); setEditName(c.name) }}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title={c.is_active ? 'Desactivar categoría' : 'Activar categoría'} disabled={toggling === c.id} onClick={() => toggle(c)}>
@@ -397,11 +399,12 @@ function MaqCatsPanel({
           <Input
             value={newCatName}
             onChange={(e) => setNewCatName(e.target.value)}
+            aria-label="Nueva categoría de maquinaria"
             placeholder="Nueva categoría de maquinaria…"
             disabled={addingCat}
             onKeyDown={(e) => e.key === 'Enter' && addCat()}
           />
-          <Button size="sm" onClick={addCat} disabled={addingCat || !newCatName.trim()} title="Agregar categoría">
+          <Button size="sm" onClick={addCat} disabled={addingCat || !newCatName.trim()} aria-label="Agregar categoría" title="Agregar categoría">
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -424,10 +427,10 @@ function MaqCatsPanel({
                         className="flex-1 h-7 text-sm"
                         autoFocus
                       />
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Guardar cambios" disabled={savingCat === cat.id} onClick={() => saveCatEdit(cat.id, cat.is_active)}>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Guardar cambios" title="Guardar cambios" disabled={savingCat === cat.id} onClick={() => saveCatEdit(cat.id, cat.is_active)}>
                         <Check className={cn('h-3.5 w-3.5 text-green-600', savingCat === cat.id && 'animate-pulse')} />
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Cancelar edición" disabled={savingCat === cat.id} onClick={() => setEditCatId(null)}>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Cancelar edición" title="Cancelar edición" disabled={savingCat === cat.id} onClick={() => setEditCatId(null)}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     </>
@@ -447,7 +450,7 @@ function MaqCatsPanel({
                       <Badge variant="outline" className={cn('text-xs flex-shrink-0', cat.is_active ? 'border-green-300 text-green-700' : 'border-zinc-300 text-zinc-500')}>
                         {cat.is_active ? 'Activa' : 'Inactiva'}
                       </Badge>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Editar nombre" onClick={() => { setEditCatId(cat.id); setEditCatName(cat.name) }}>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Editar nombre" title="Editar nombre" onClick={() => { setEditCatId(cat.id); setEditCatName(cat.name) }}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title={cat.is_active ? 'Desactivar categoría' : 'Activar categoría'} disabled={togglingCat === cat.id} onClick={() => toggleCat(cat)}>
@@ -473,10 +476,10 @@ function MaqCatsPanel({
                               className="flex-1 h-7 text-sm"
                               autoFocus
                             />
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Guardar cambios" disabled={savingSub === sub.id} onClick={() => saveSubEdit(sub.id, sub.is_active)}>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Guardar cambios" title="Guardar cambios" disabled={savingSub === sub.id} onClick={() => saveSubEdit(sub.id, sub.is_active)}>
                               <Check className={cn('h-3.5 w-3.5 text-green-600', savingSub === sub.id && 'animate-pulse')} />
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Cancelar edición" disabled={savingSub === sub.id} onClick={() => setEditSubId(null)}>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Cancelar edición" title="Cancelar edición" disabled={savingSub === sub.id} onClick={() => setEditSubId(null)}>
                               <X className="h-3.5 w-3.5" />
                             </Button>
                           </>
@@ -496,7 +499,7 @@ function MaqCatsPanel({
                             <Badge variant="outline" className={cn('text-xs', sub.is_active ? 'border-green-300 text-green-700' : 'border-zinc-300 text-zinc-500')}>
                               {sub.is_active ? 'Activa' : 'Inactiva'}
                             </Badge>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Editar nombre" onClick={() => { setEditSubId(sub.id); setEditSubName(sub.name) }}>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label="Editar nombre" title="Editar nombre" onClick={() => { setEditSubId(sub.id); setEditSubName(sub.name) }}>
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title={sub.is_active ? 'Desactivar subcategoría' : 'Activar subcategoría'} disabled={togglingSub === sub.id} onClick={() => toggleSub(sub)}>
@@ -607,6 +610,9 @@ function DeptRestrictionsPanel({
                   Maquinaria
                 </span>
                 <button
+                  role="switch"
+                  aria-checked={hasMaq}
+                  aria-label={`Maquinaria para ${d.name}`}
                   onClick={() => toggle(d)}
                   disabled={saving === d.id}
                   className={cn(
@@ -648,8 +654,9 @@ function ManagersPanel({
 
   async function save(deptId: string) {
     setSaving(deptId)
-    await setDepartmentManager(deptId, vals[deptId] ?? '')
+    const r = await setDepartmentManager(deptId, vals[deptId] ?? '')
     setSaving(null)
+    if (r.error) { toast.error(r.error); return }
     toast.success('Encargado actualizado')
     onSaved()
   }

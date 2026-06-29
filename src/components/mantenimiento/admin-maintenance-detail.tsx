@@ -204,7 +204,7 @@ export function AdminMaintenanceDetail({
     setGeneratingPdf(true)
     const r = await regeneratePdf(ticket.id)
     setGeneratingPdf(false)
-    if (r.error) { toast.error(r.error); return }
+    if (r.error) { toast.error('No se pudo generar el PDF. Inténtalo de nuevo.'); return }
     setPdfCacheBust(Date.now())
     toast.success('PDF generado correctamente')
     router.refresh()
@@ -588,6 +588,7 @@ export function AdminMaintenanceDetail({
                       className="h-7 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
                       disabled={deletingEvid === ev.id}
                       onClick={() => handleDeleteEvidencia(ev.id)}
+                      aria-label="Eliminar archivo"
                       title="Eliminar archivo"
                     >
                       <Trash2 className={`h-3 w-3 ${deletingEvid === ev.id ? 'animate-pulse' : ''}`} />

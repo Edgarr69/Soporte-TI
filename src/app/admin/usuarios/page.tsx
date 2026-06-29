@@ -24,7 +24,8 @@ export default async function AdminUsuariosPage() {
       .from('profiles')
       .select('id, email, full_name, role, first_login_completed, created_at, department:departments(name)')
       .in('role', rolesToShow)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .limit(200),
     supabase.from('departments').select('id, name').order('name'),
   ])
 

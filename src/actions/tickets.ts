@@ -83,8 +83,6 @@ export async function createTicket(data: NewTicketFormData) {
   ])
   if (notifErr) console.error('[createTicket] notification insert failed:', notifErr.message)
 
-  revalidatePath('/tickets')
-  revalidatePath('/dashboard')
   revalidatePath('/mis-tickets')
   revalidatePath('/notificaciones')
   return { ticket }
@@ -103,7 +101,7 @@ export async function changeTicketStatus(
 
   const { data: adminProfile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, full_name, email')
     .eq('id', user.id)
     .single()
   const allowedRoles = ['admin_sistemas', 'super_admin']
@@ -168,10 +166,7 @@ export async function changeTicketStatus(
   })
   if (histErr) console.error('[changeTicketStatus] historial insert failed:', histErr.message)
 
-  // Un solo fetch del perfil admin — reutilizado en ambas notificaciones
-  const { data: adminProfileData } = await supabase
-    .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const adminNameNotif = adminProfileData?.full_name ?? adminProfileData?.email ?? 'El administrador'
+  const adminNameNotif = adminProfile?.full_name ?? adminProfile?.email ?? 'El administrador'
   const statusVerbsNotif: Record<string, string> = {
     cerrado:    'cerró tu ticket',
     reabierto:  'reabrió tu ticket',
@@ -189,8 +184,8 @@ export async function changeTicketStatus(
     body:      `${adminNameNotif} ${statusVerbNotif}${comment ? `: ${comment}` : ''}`,
   })
 
-  // Admin notification (reutiliza adminProfileData ya obtenido)
-  const adminName2 = adminProfileData?.full_name ?? adminProfileData?.email ?? 'Admin'
+  // Admin notification (reutiliza adminProfile ya obtenido)
+  const adminName2 = adminProfile?.full_name ?? adminProfile?.email ?? 'Admin'
   const adminNotifType = newStatus === 'cerrado' ? 'ticket_closed'
     : newStatus === 'reabierto' ? 'ticket_reopened'
     : 'ticket_status_changed'
@@ -289,6 +284,9 @@ export async function addComment(
   if (!isOwner && !isAdmin) return { error: 'Sin permiso' }
   if (isInternal && !isAdmin) return { error: 'Sin permiso para comentarios internos' }
 
+  if (!body?.trim()) return { error: 'El comentario no puede estar vacío' }
+  if (body.length > 5000) return { error: 'El comentario no puede superar 5000 caracteres' }
+
   const { error } = await supabase.from('ticket_comments').insert({
     ticket_id:   ticketId,
     author_id:   user.id,
@@ -296,7 +294,7 @@ export async function addComment(
     is_internal: isInternal,
   })
 
-  if (error) return { error: error.message }
+  if (error) return { error: 'Error al guardar el comentario' }
 
   // Notificar al dueño del ticket si el comentario es del admin y no interno
   if (!isInternal && ticket.user_id !== user.id) {

@@ -22,6 +22,7 @@ export default async function TecnicoPage() {
     .eq('tecnico_id', user.id)
     .not('status', 'in', '("terminado","cancelado")')
     .order('created_at', { ascending: false })
+    .limit(50)
 
   const { data: histTickets } = await supabase
     .from('maintenance_tickets')

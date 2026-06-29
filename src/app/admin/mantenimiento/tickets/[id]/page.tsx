@@ -47,7 +47,7 @@ export default async function AdminMaintenanceTicketDetailPage({
       .order('created_at', { ascending: true }),
     supabase
       .from('maintenance_evidencias')
-      .select('*')
+      .select('id, file_name, file_path, type, created_at')
       .eq('ticket_id', id)
       .order('created_at', { ascending: true }),
     getCachedTechnicians(),
