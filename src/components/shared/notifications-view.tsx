@@ -18,8 +18,8 @@ interface Props {
 }
 
 export function NotificationsView({ initialNotifications, userId, role }: Props) {
-  const supabase = createClient()
-  const router   = useRouter()
+  const [supabase] = useState(() => createClient())
+  const router     = useRouter()
   const [notifications, setNotifications] = useState(initialNotifications)
   const [selected, setSelected] = useState<NotifItem | null>(null)
   const [markingAll, setMarkingAll] = useState(false)
@@ -43,7 +43,7 @@ export function NotificationsView({ initialNotifications, userId, role }: Props)
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [userId, role, supabase, router])
+  }, [userId, role])
 
   async function markAllRead() {
     setMarkingAll(true)

@@ -14,7 +14,7 @@ export default async function NotificationsPage() {
 
   let notifQuery = supabase
     .from('notifications')
-    .select('*')
+    .select('id, user_id, ticket_id, type, module, title, body, is_read, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(50)

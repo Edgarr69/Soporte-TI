@@ -4,6 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend,
 } from 'recharts'
+import { useCallback } from 'react'
 import { useTheme } from 'next-themes'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { minutesToHuman } from '@/lib/utils'
@@ -31,6 +32,10 @@ export function AdminReportsView({
   const isDark = resolvedTheme === 'dark'
   const gridColor = isDark ? '#27272a' : '#f4f4f5'
   const textColor = isDark ? '#a1a1aa' : '#71717a'
+  const pieLegendFormatter = useCallback(
+    (value: string) => <span style={{ color: textColor, fontSize: 12 }}>{value}</span>,
+    [textColor]
+  )
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
@@ -78,7 +83,7 @@ export function AdminReportsView({
                   ))}
                 </Pie>
                 <Tooltip />
-                <Legend iconType="circle" iconSize={10} formatter={(value) => <span style={{ color: textColor, fontSize: 12 }}>{value}</span>} />
+                <Legend iconType="circle" iconSize={10} formatter={pieLegendFormatter} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>

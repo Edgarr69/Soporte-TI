@@ -65,10 +65,15 @@ export async function createUser(data: {
     profileUpdates.first_login_completed = true
   }
 
-  await adminSupabase
+  const { error: profileErr } = await adminSupabase
     .from('profiles')
     .update(profileUpdates)
     .eq('id', newUser.user.id)
+
+  if (profileErr) {
+    await adminSupabase.auth.admin.deleteUser(newUser.user.id)
+    return { error: 'Error al configurar el perfil del usuario' }
+  }
 
   // Admin notification
   const { data: actorU } = await supabase

@@ -70,6 +70,8 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
   const [techNotes,     setTechNotes]     = useState(t.technical_notes ?? '')
   const [comments,      setComments]      = useState(initialComments)
 
+  useEffect(() => { setComments(initialComments) }, [initialComments])
+
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
@@ -133,21 +135,22 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
   function handleAddComment() {
     if (!commentBody.trim()) return
     startCommentTransition(async () => {
-      const res = await addComment(t.id, commentBody.trim(), isInternal)
+      const body = commentBody.trim()
+      const res = await addComment(t.id, body, isInternal)
       if (res.error) { toast.error(res.error); return }
       toast.success('Comentario agregado.')
       setCommentBody('')
-      router.refresh()
       setComments((prev) => [
         ...prev,
         {
-          id: Date.now().toString(),
-          body: commentBody.trim(),
+          id: `optimistic-${Date.now()}`,
+          body,
           is_internal: isInternal,
           created_at: new Date().toISOString(),
           author: { full_name: adminName, email: '' },
         } as Record<string, unknown>,
       ])
+      router.refresh()
     })
   }
 

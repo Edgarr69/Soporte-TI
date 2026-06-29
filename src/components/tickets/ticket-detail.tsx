@@ -17,6 +17,16 @@ import { addComment } from '@/actions/tickets'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
+const BLOCKING_LABELS: Record<string, string> = {
+  total:   'Sí, totalmente',
+  partial: 'Sí, parcialmente',
+  none:    'No',
+}
+const SCOPE_LABELS: Record<string, string> = {
+  single:   'Solo a mí',
+  multiple: 'A varias personas',
+}
+
 interface Comment {
   id: string
   body: string
@@ -84,16 +94,6 @@ export function TicketDetail({ ticket, history, comments, currentUserId, current
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [localComments])
-
-  const blockingMap: Record<string, string> = {
-    total:   'Sí, totalmente',
-    partial: 'Sí, parcialmente',
-    none:    'No',
-  }
-  const scopeMap: Record<string, string> = {
-    single:   'Solo a mí',
-    multiple: 'A varias personas',
-  }
 
   async function submitComment() {
     const body = commentBody.trim()
@@ -252,8 +252,8 @@ export function TicketDetail({ ticket, history, comments, currentUserId, current
               </p>
               <Separator />
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                <InfoItem label="Impide trabajar" value={blockingMap[t.blocking_level] ?? t.blocking_level} />
-                <InfoItem label="Afecta a"        value={scopeMap[t.affected_scope] ?? t.affected_scope} />
+                <InfoItem label="Impide trabajar" value={BLOCKING_LABELS[t.blocking_level] ?? t.blocking_level} />
+                <InfoItem label="Afecta a"        value={SCOPE_LABELS[t.affected_scope] ?? t.affected_scope} />
                 <InfoItem label="Alternativa"     value={t.has_workaround ? 'Sí tiene' : 'No tiene'} />
               </div>
             </CardContent>

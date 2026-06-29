@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { MaintenanceStatus, MaintenanceType } from '@/lib/types'
+import { MAINTENANCE_TRANSITIONS } from '@/lib/types'
 import { createAdminNotification } from '@/actions/admin-notifications'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { MaintenancePdfDocument } from '@/components/mantenimiento/maintenance-pdf-template'
@@ -51,8 +52,8 @@ export async function createMaintenanceTicket(formData: FormData) {
   const fecha_termino_estimada  = (formData.get('fecha_termino_estimada') as string) || null
   const photoFile               = formData.get('photo') as File | null
 
-  // Validar fechas
-  const today = new Date().toISOString().split('T')[0]
+  // Validar fechas — usar zona horaria de México para que el corte sea medianoche local
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date())
   if (fecha_solicitud < today)
     return { error: 'La fecha de solicitud no puede ser anterior a hoy.' }
   if (fecha_termino_estimada && fecha_termino_estimada < fecha_solicitud)
@@ -215,6 +216,9 @@ export async function changeMaintenanceStatus(
     .single()
   if (!ticket) return { error: 'Solicitud no encontrada' }
 
+  if (!MAINTENANCE_TRANSITIONS[ticket.status as MaintenanceStatus]?.includes(newStatus))
+    return { error: 'Transición de estado no válida' }
+
   // Validar fecha de término si se proporciona
   if (options?.fecha_termino_estimada && ticket.fecha_solicitud) {
     if (options.fecha_termino_estimada < ticket.fecha_solicitud)
@@ -261,14 +265,15 @@ export async function changeMaintenanceStatus(
 
   if (error) return { error: error.message }
 
-  // Historial
-  await supabase.from('maintenance_status_history').insert({
+  // Historial (no bloqueante — el estado ya fue guardado)
+  const { error: histErr } = await supabase.from('maintenance_status_history').insert({
     ticket_id:   ticketId,
     changed_by:  user.id,
     from_status: ticket.status,
     to_status:   newStatus,
     comment:     options?.comment ?? null,
   })
+  if (histErr) console.error('[changeMaintenanceStatus] historial insert failed:', histErr.message)
 
   // Notificación al usuario
   const statusLabels: Record<MaintenanceStatus, string> = {
@@ -476,7 +481,7 @@ export async function uploadEvidencia(
 
     if (upErr) continue
 
-    await supabase.from('maintenance_evidencias').insert({
+    const { error: dbErr } = await supabase.from('maintenance_evidencias').insert({
       ticket_id:   ticketId,
       uploaded_by: user.id,
       file_name:   safeName,
@@ -485,6 +490,12 @@ export async function uploadEvidencia(
       mime_type:   file.type,
       type:        'evidencia',
     })
+
+    if (dbErr) {
+      await supabase.storage.from('maintenance-docs').remove([filePath])
+      continue
+    }
+
     results.push(filePath)
   }
 
@@ -516,8 +527,15 @@ export async function deleteEvidencia(
   if (!ev) return { error: 'Evidencia no encontrada' }
 
   const serviceClient = createAdminClient()
+
+  // DB primero: si falla, el archivo en storage sigue siendo accesible por el registro
+  const { error: dbDelErr } = await serviceClient
+    .from('maintenance_evidencias').delete().eq('id', evidenciaId)
+  if (dbDelErr) return { error: 'Error al eliminar el registro de evidencia' }
+
+  // Storage después: si falla, el registro ya fue eliminado (archivo huérfano en storage,
+  // que se puede limpiar manualmente — mejor que un registro huérfano en DB)
   await serviceClient.storage.from('maintenance-docs').remove([ev.file_path])
-  await serviceClient.from('maintenance_evidencias').delete().eq('id', evidenciaId)
 
   revalidatePath(`/admin/mantenimiento/tickets/${ticketId}`)
   return {}

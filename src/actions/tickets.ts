@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { calculatePriority } from '@/lib/priority'
 import type { NewTicketFormData, AdminUpdateTicketData, TicketStatus } from '@/lib/types'
+import { TICKET_TRANSITIONS } from '@/lib/types'
 import { createAdminNotification } from '@/actions/admin-notifications'
 
 // ─── Crear ticket ─────────────────────────────────────────
@@ -115,6 +116,9 @@ export async function changeTicketStatus(
     .single()
   if (!ticket) return { error: 'Ticket no encontrado' }
 
+  if (!TICKET_TRANSITIONS[ticket.status as TicketStatus]?.includes(newStatus))
+    return { error: 'Transición de estado no válida' }
+
   const now = new Date().toISOString()
   const updates: Record<string, unknown> = { status: newStatus }
 
@@ -154,14 +158,15 @@ export async function changeTicketStatus(
 
   if (error) return { error: error.message }
 
-  // Historial
-  await supabase.from('ticket_status_history').insert({
+  // Historial (no bloqueante — el estado ya fue guardado)
+  const { error: histErr } = await supabase.from('ticket_status_history').insert({
     ticket_id:    ticketId,
     changed_by:   user.id,
     from_status:  ticket.status,
     to_status:    newStatus,
     comment:      comment ?? null,
   })
+  if (histErr) console.error('[changeTicketStatus] historial insert failed:', histErr.message)
 
   // Un solo fetch del perfil admin — reutilizado en ambas notificaciones
   const { data: adminProfileData } = await supabase

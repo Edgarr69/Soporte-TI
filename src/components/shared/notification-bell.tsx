@@ -26,8 +26,8 @@ interface Props {
 }
 
 export function NotificationBell({ unreadCount: initialCount, userId, role }: Props) {
-  const supabase = createClient()
-  const router   = useRouter()
+  const [supabase] = useState(() => createClient())
+  const router     = useRouter()
   const isAdmin  = ADMIN_ROLES.includes(role)
 
   const [count, setCount]         = useState(initialCount)
@@ -70,7 +70,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
           .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [isAdmin, userId, supabase, router])
+  }, [isAdmin, userId])
 
   async function handleOpen(isOpen: boolean) {
     setOpen(isOpen)
