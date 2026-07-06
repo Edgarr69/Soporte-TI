@@ -44,6 +44,14 @@ export function LandingNavbar() {
   const { resolvedTheme, setTheme } = useTheme()
   const [isLoginOpen, setIsLoginOpen] = useState(false)
 
+  // El servidor no conoce el tema (next-themes lo resuelve en el cliente):
+  // usar un label dependiente del tema antes de montar rompe la hidratación
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const themeLabel = !mounted
+    ? 'Cambiar tema'
+    : resolvedTheme === 'light' ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro'
+
   return (
     <>
       <nav className="w-full py-2 flex justify-center gap-3 bg-transparent">
@@ -71,7 +79,7 @@ export function LandingNavbar() {
           </button>
           <button
             className="size-10 md:size-8 flex items-center justify-center rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            aria-label={resolvedTheme === 'light' ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro'}
+            aria-label={themeLabel}
             onClick={() => setTheme(resolvedTheme === 'light' ? 'dark' : 'light')}
           >
             <ThemeToggleIcon />

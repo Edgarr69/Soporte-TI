@@ -24,9 +24,9 @@ export function AnimatedGridPattern({
   strokeDasharray = 0,
   numSquares = 50,
   className,
+  maxOpacity = 0.4,
   duration = 4,
   repeatDelay = 0.5,
-  ...props
 }: GridPatternProps) {
   const id = useId()
   const containerRef = useRef<SVGSVGElement>(null)
@@ -86,7 +86,6 @@ export function AnimatedGridPattern({
         'pointer-events-none absolute inset-0 h-full w-full fill-gray-400/30 stroke-gray-400/30',
         className,
       )}
-      {...props}
     >
       <defs>
         <pattern
@@ -113,6 +112,8 @@ export function AnimatedGridPattern({
             strokeWidth="0"
             style={{
               animation: `grid-fade ${duration}s ease-in-out ${index * 0.1}s 1 both`,
+              // Pico de opacidad de la keyframe grid-fade (globals.css)
+              ['--grid-max-opacity' as string]: Math.min(maxOpacity, 1),
             }}
           />
         ))}
