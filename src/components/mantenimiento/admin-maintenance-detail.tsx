@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LinkButton } from '@/components/ui/link-button'
 import { HistorialTimeline } from '@/components/shared/historial-timeline'
+import { ChatThread } from '@/components/shared/chat-thread'
 import {
   MAINTENANCE_STATUS_LABELS, MAINTENANCE_STATUS_COLORS, MAINTENANCE_TRANSITIONS,
   MAINTENANCE_TYPE_LABELS,
@@ -644,58 +645,18 @@ export function AdminMaintenanceDetail({
           </Card>
 
           {/* Comentarios */}
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Comentarios</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {localComments.length === 0 && (
-                <p className="text-xs text-zinc-400">Sin comentarios.</p>
-              )}
-              {localComments.map((c) => (
-                <div key={c.id} className={cn(
-                  'text-sm border-l-2 pl-3',
-                  c.is_internal
-                    ? 'border-amber-400 dark:border-amber-600'
-                    : 'border-zinc-200 dark:border-zinc-700'
-                )}>
-                  <p className="font-medium text-zinc-700 dark:text-zinc-300">
-                    {c.author?.full_name ?? c.author?.email ?? '?'}
-                    {c.is_internal && (
-                      <span className="ml-2 text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded">
-                        Interno
-                      </span>
-                    )}
-                    <span className="text-xs font-normal text-zinc-400 ml-2">{formatDate(c.created_at)}</span>
-                  </p>
-                  <p className="text-zinc-600 dark:text-zinc-400 mt-0.5">{c.body}</p>
-                </div>
-              ))}
-
-              <div className="space-y-2 pt-2">
-                <Textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Escribe un comentario…"
-                  rows={2}
-                  disabled={submitting}
-                />
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isInternal}
-                      onChange={(e) => setIsInternal(e.target.checked)}
-                      disabled={submitting}
-                      className="rounded"
-                    />
-                    Solo visible para admins
-                  </label>
-                  <Button size="sm" onClick={submitComment} disabled={submitting || !comment.trim()}>
-                    Enviar
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ChatThread
+            messages={localComments}
+            currentUserId={currentUserId}
+            value={comment}
+            onChange={setComment}
+            onSubmit={submitComment}
+            submitting={submitting}
+            showInternalToggle
+            isInternal={isInternal}
+            onInternalChange={setIsInternal}
+            className="h-[28rem]"
+          />
         </div>
 
         {/* Timeline */}

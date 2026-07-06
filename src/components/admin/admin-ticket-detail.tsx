@@ -9,7 +9,7 @@ import {
 } from '@/actions/tickets'
 import { createClient } from '@/lib/supabase/client'
 import {
-  ArrowLeft, Loader2, RotateCcw, MessageSquare, Lock, Calendar, Clock, CheckCircle2,
+  ArrowLeft, Loader2, RotateCcw, Lock, Calendar, Clock, CheckCircle2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LinkButton } from '@/components/ui/link-button'
@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ChatThread, type ChatMessage } from '@/components/shared/chat-thread'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -236,68 +237,18 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
           </Card>
 
           {/* Comentarios */}
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-              Comentarios
-            </h2>
-            {comments.map((c) => {
-              const cm = c as {
-                id: string; body: string; is_internal: boolean; created_at: string
-                author: { full_name: string } | null
-              }
-              return (
-                <Card
-                  key={cm.id}
-                  className={cn(
-                    'border-zinc-200 dark:border-zinc-800',
-                    cm.is_internal && 'border-amber-200 dark:border-amber-900 bg-amber-50/30 dark:bg-amber-950/10'
-                  )}
-                >
-                  <CardContent className="py-3 px-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      {cm.is_internal && <Lock className="h-3 w-3 text-amber-500" />}
-                      <span className="text-xs font-medium">{cm.author?.full_name ?? 'Sistema'}</span>
-                      {cm.is_internal && <Badge variant="outline" className="text-xs">Interno</Badge>}
-                      <span className="text-xs text-zinc-400 ml-auto">{formatRelative(cm.created_at)}</span>
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap">{cm.body}</p>
-                  </CardContent>
-                </Card>
-              )
-            })}
-            {/* Nuevo comentario */}
-            <Card className="border-zinc-200 dark:border-zinc-800">
-              <CardContent className="py-3 px-4 space-y-3">
-                <Textarea
-                  placeholder="Agregar comentario…"
-                  value={commentBody}
-                  onChange={(e) => setCommentBody(e.target.value)}
-                  rows={3}
-                  disabled={isCommentPending}
-                />
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isInternal}
-                      onChange={(e) => setIsInternal(e.target.checked)}
-                      className="rounded"
-                    />
-                    <Lock className="h-3 w-3" /> Solo visible para admin
-                  </label>
-                  <Button
-                    size="sm"
-                    onClick={handleAddComment}
-                    disabled={!commentBody.trim() || isCommentPending}
-                  >
-                    {isCommentPending && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
-                    <MessageSquare className="h-3 w-3 mr-1.5" />
-                    Comentar
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <ChatThread
+            messages={comments as unknown as ChatMessage[]}
+            currentUserId={userId}
+            value={commentBody}
+            onChange={setCommentBody}
+            onSubmit={handleAddComment}
+            submitting={isCommentPending}
+            showInternalToggle
+            isInternal={isInternal}
+            onInternalChange={setIsInternal}
+            className="h-[28rem]"
+          />
         </TabsContent>
 
         {/* ─── Tab: Gestión ─── */}

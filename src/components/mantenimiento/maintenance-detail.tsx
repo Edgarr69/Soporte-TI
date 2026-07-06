@@ -1,19 +1,20 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { LinkButton } from '@/components/ui/link-button'
+import { ChatThread } from '@/components/shared/chat-thread'
 import {
   MAINTENANCE_STATUS_LABELS, MAINTENANCE_STATUS_COLORS,
   MAINTENANCE_TYPE_LABELS,
   type MaintenanceStatus, type MaintenanceType,
 } from '@/lib/types'
 import { formatDate, formatRelative, cn } from '@/lib/utils'
-import { ArrowLeft, Send, AlertTriangle, MessageSquare } from 'lucide-react'
+import { ArrowLeft, AlertTriangle } from 'lucide-react'
 import { addMaintenanceComment, cancelMaintenanceTicket } from '@/actions/maintenance'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -71,7 +72,6 @@ export function MaintenanceDetail({
   const [cancelReason, setCancelReason]   = useState('')
   const [showCancel,  setShowCancel]      = useState(false)
   const [localComments, setLocalComments] = useState(comments)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setLocalComments(comments) }, [comments])
 
@@ -102,11 +102,6 @@ export function MaintenanceDetail({
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [ticket.id, currentUserId])
-
-  // Auto-scroll al último mensaje
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [localComments])
 
   const canCancel = ticket.status === 'pendiente'
 
@@ -216,88 +211,15 @@ export function MaintenanceDetail({
 
         {/* ── Chat ── */}
         <div className="lg:col-span-2 lg:sticky lg:top-6">
-          <Card className="border-zinc-200 dark:border-zinc-800 flex flex-col h-[calc(100vh-14rem)]">
-            <CardHeader className="pb-2 border-b border-zinc-100 dark:border-zinc-800 flex-shrink-0">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <MessageSquare className="h-3.5 w-3.5" />
-                Mensajes
-                {localComments.length > 0 && (
-                  <span className="text-xs font-normal text-zinc-400">({localComments.length})</span>
-                )}
-              </CardTitle>
-            </CardHeader>
-
-            {/* Burbujeas */}
-            <CardContent className="flex-1 overflow-y-auto py-4 px-3 space-y-3 min-h-0">
-              {localComments.length === 0 && (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-xs text-zinc-400 text-center">
-                    Sin mensajes aún.<br />Escribe uno para comenzar.
-                  </p>
-                </div>
-              )}
-
-              {localComments.map((c) => {
-                const isMe = c.author_id === currentUserId
-                return (
-                  <div
-                    key={c.id}
-                    className={cn(
-                      'flex flex-col gap-0.5 max-w-[82%]',
-                      isMe ? 'ml-auto items-end' : 'mr-auto items-start',
-                    )}
-                  >
-                    {!isMe && (
-                      <span className="text-[11px] text-zinc-500 px-1 font-medium">
-                        {c.author?.full_name ?? c.author?.email ?? '—'}
-                      </span>
-                    )}
-                    <div
-                      className={cn(
-                        'px-3 py-2 text-sm whitespace-pre-wrap break-words leading-relaxed',
-                        isMe
-                          ? 'bg-blue-500 text-white rounded-2xl rounded-br-sm'
-                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-2xl rounded-bl-sm',
-                      )}
-                    >
-                      {c.body}
-                    </div>
-                    <span className="text-[10px] text-zinc-400 px-1">
-                      {formatRelative(c.created_at)}
-                    </span>
-                  </div>
-                )
-              })}
-              <div ref={messagesEndRef} />
-            </CardContent>
-
-            {/* Input */}
-            <div className="flex gap-2 p-3 border-t border-zinc-100 dark:border-zinc-800 flex-shrink-0">
-              <Textarea
-                value={commentBody}
-                onChange={(e) => setCommentBody(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    submitComment()
-                  }
-                }}
-                placeholder="Escribe un mensaje… (Enter para enviar)"
-                rows={2}
-                disabled={submitting}
-                className="flex-1 resize-none text-sm"
-              />
-              <Button
-                size="sm"
-                onClick={submitComment}
-                disabled={submitting || !commentBody.trim()}
-                className="self-end"
-                aria-label="Enviar mensaje"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
+          <ChatThread
+            messages={localComments}
+            currentUserId={currentUserId}
+            value={commentBody}
+            onChange={setCommentBody}
+            onSubmit={submitComment}
+            submitting={submitting}
+            className="h-[calc(100vh-14rem)]"
+          />
         </div>
 
         {/* ── Info + Historial ── */}
