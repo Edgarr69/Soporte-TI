@@ -15,19 +15,18 @@ import {
 import { MAINTENANCE_STATUS_LABELS } from '@/lib/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+// Agregados por día calculados en SQL (migración 012) — el dashboard ya no
+// recibe tickets crudos; el filtro por rango sigue siendo client-side
 
-interface Ticket {
-  type: string
-  status: string
-  area_name_snapshot: string | null
-  department_name_snapshot: string | null
-  created_at: string
-  assignment_time_minutes: number | null
-  resolution_time_minutes: number | null
-  tecnico_nombre_snapshot: string | null
+import type { MantDailyRow, MantDayDimRow } from '@/lib/admin-dashboard-cache'
+
+interface Props {
+  stats: {
+    daily:     MantDailyRow[]
+    byArea:    MantDayDimRow[]
+    byTecnico: MantDayDimRow[]
+  }
 }
-
-interface Props { tickets: Ticket[] }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -59,15 +58,25 @@ function fmtMinutes(minutes: number | null): { value: number; unit: string } | n
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function AdminMantenimientoDashboard({ tickets }: Props) {
+export function AdminMantenimientoDashboard({ stats }: Props) {
+  const { daily, byArea, byTecnico } = stats
   const today = todayStr()
-  const defaultFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+  // Rango inicial: últimos 30 días — pero si el dato más reciente es más
+  // viejo que eso, abrir hasta el primer día con datos para no mostrar un
+  // dashboard vacío engañoso
+  const lastDataDay = daily[daily.length - 1]?.day
+  const defaultFrom = lastDataDay && lastDataDay < thirtyDaysAgo
+    ? (daily[0]?.day ?? thirtyDaysAgo)
+    : thirtyDaysAgo
+
   const [fromDate, setFromDate] = useState(defaultFrom)
   const [toDate,   setToDate]   = useState(today)
 
-  // El backend solo trae los últimos 12 meses — el primer ticket (orden ascendente)
-  // marca el límite real de datos disponibles para no sugerir rangos vacíos
-  const minDate = tickets[0]?.created_at.slice(0, 10) ?? defaultFrom
+  // El backend solo trae los últimos 12 meses — el primer día con datos
+  // (orden ascendente) marca el límite real para no sugerir rangos vacíos
+  const minDate = daily[0]?.day ?? defaultFrom
 
   // Restaura el último rango de fechas elegido (persiste entre visitas al panel).
   // Se hace en un efecto — no en el estado inicial — para no desincronizar el
@@ -80,6 +89,9 @@ export function AdminMantenimientoDashboard({ tickets }: Props) {
       if (!from || !to) return
       const f = from < minDate ? minDate : from > today ? today : from
       const t = to > today ? today : to < f ? f : to
+      // Si el rango guardado ya no cubre ningún día con datos, se descarta
+      // y se queda el default (que sí abre hasta donde hay datos)
+      if (!daily.some((d) => d.day >= f && d.day <= t)) return
       setFromDate(f)
       setToDate(t)
     } catch {
@@ -105,34 +117,30 @@ export function AdminMantenimientoDashboard({ tickets }: Props) {
     if (val >= fromDate) setToDate(val)
   }
 
-  // ── Filtered data ────────────────────────────────────────────────────────
+  // ── Filtered data (filas diarias pre-agregadas en SQL) ───────────────────
   const filtered = useMemo(() =>
-    tickets.filter((t) => {
-      const d = t.created_at.slice(0, 10)
-      return d >= fromDate && d <= toDate
-    }),
-  [tickets, fromDate, toDate])
+    daily.filter((d) => d.day >= fromDate && d.day <= toDate),
+  [daily, fromDate, toDate])
 
-  // ── KPIs (un solo recorrido sobre `filtered` en vez de ~9 pasadas separadas) ──
+  // ── KPIs (roll-up de los agregados diarios del rango) ────────────────────
   const kpis = useMemo(() => {
-    let pendiente = 0, activos = 0, terminado = 0, cancelado = 0, general = 0, maquinaria = 0
+    let total = 0, pendiente = 0, activos = 0, terminado = 0, cancelado = 0, general = 0, maquinaria = 0
     let assignSum = 0, assignCount = 0, resolSum = 0, resolCount = 0
 
-    for (const t of filtered) {
-      if      (t.status === 'pendiente')   pendiente++
-      else if (t.status === 'terminado')   terminado++
-      else if (t.status === 'cancelado')   cancelado++
-      else if (t.status === 'en_revision' || t.status === 'asignado' || t.status === 'en_proceso') activos++
-
-      if      (t.type === 'general')    general++
-      else if (t.type === 'maquinaria') maquinaria++
-
-      if (t.assignment_time_minutes != null) { assignSum += t.assignment_time_minutes; assignCount++ }
-      if (t.resolution_time_minutes != null) { resolSum  += t.resolution_time_minutes; resolCount++ }
+    for (const d of filtered) {
+      total      += d.total
+      pendiente  += d.pendiente
+      terminado  += d.terminado
+      cancelado  += d.cancelado
+      activos    += d.en_revision + d.asignado + d.en_proceso
+      general    += d.general
+      maquinaria += d.maquinaria
+      assignSum  += d.assign_sum;  assignCount += d.assign_count
+      resolSum   += d.resol_sum;   resolCount  += d.resol_count
     }
 
     return {
-      total: filtered.length, pendiente, activos, terminado, cancelado, general, maquinaria,
+      total, pendiente, activos, terminado, cancelado, general, maquinaria,
       avgAssignment: assignCount ? Math.round(assignSum / assignCount) : null,
       avgResolution: resolCount ? Math.round(resolSum / resolCount) : null,
     }
@@ -148,10 +156,7 @@ export function AdminMantenimientoDashboard({ tickets }: Props) {
     for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       map.set(d.toISOString().split('T')[0], 0)
     }
-    filtered.forEach((t) => {
-      const d = t.created_at.slice(0, 10)
-      map.set(d, (map.get(d) ?? 0) + 1)
-    })
+    filtered.forEach((d) => map.set(d.day, d.total))
     return [...map.entries()].map(([date, count]) => ({
       date: date.slice(5).replace('-', '/'),
       count,
@@ -160,10 +165,10 @@ export function AdminMantenimientoDashboard({ tickets }: Props) {
 
   // ── By status (donut) ────────────────────────────────────────────────────
   const statusData = useMemo(() =>
-    Object.entries(MAINTENANCE_STATUS_LABELS)
+    (Object.entries(MAINTENANCE_STATUS_LABELS) as [keyof MantDailyRow, string][])
       .map(([status, label]) => ({
         status, label,
-        value: filtered.filter((t) => t.status === status).length,
+        value: filtered.reduce((sum, d) => sum + ((d[status] as number) ?? 0), 0),
         color: STATUS_COLORS[status] ?? '#94a3b8',
       }))
       .filter((d) => d.value > 0),
@@ -172,28 +177,28 @@ export function AdminMantenimientoDashboard({ tickets }: Props) {
   // ── By area ──────────────────────────────────────────────────────────────
   const areaData = useMemo(() => {
     const map = new Map<string, number>()
-    filtered.forEach((t) => {
-      const k = t.area_name_snapshot ?? 'Sin área'
-      map.set(k, (map.get(k) ?? 0) + 1)
+    byArea.forEach((r) => {
+      if (r.day < fromDate || r.day > toDate) return
+      map.set(r.name, (map.get(r.name) ?? 0) + r.total)
     })
     return [...map.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 7)
       .map(([name, value]) => ({ name, value }))
-  }, [filtered])
+  }, [byArea, fromDate, toDate])
 
   // ── By technician ────────────────────────────────────────────────────────
   const tecData = useMemo(() => {
     const map = new Map<string, number>()
-    filtered.forEach((t) => {
-      if (!t.tecnico_nombre_snapshot) return
-      map.set(t.tecnico_nombre_snapshot, (map.get(t.tecnico_nombre_snapshot) ?? 0) + 1)
+    byTecnico.forEach((r) => {
+      if (r.day < fromDate || r.day > toDate) return
+      map.set(r.name, (map.get(r.name) ?? 0) + r.total)
     })
     return [...map.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 7)
       .map(([name, value]) => ({ name, value }))
-  }, [filtered])
+  }, [byTecnico, fromDate, toDate])
 
   const assignFmt = fmtMinutes(avgAssignment)
   const resolFmt  = fmtMinutes(avgResolution)

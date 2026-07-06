@@ -14,9 +14,10 @@ export async function createTicket(data: NewTicketFormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  // Ambas queries son independientes — ejecutar en paralelo
+  // Ambas queries son independientes — ejecutar en paralelo.
+  // El perfil trae también nombre/email para las notificaciones de abajo
   const [{ data: profile }, { data: subcat }] = await Promise.all([
-    supabase.from('profiles').select('department_id').eq('id', user.id).single(),
+    supabase.from('profiles').select('department_id, full_name, email').eq('id', user.id).single(),
     supabase.from('ticket_subcategories').select('base_score').eq('id', data.subcategory_id).single(),
   ])
 
@@ -47,10 +48,7 @@ export async function createTicket(data: NewTicketFormData) {
 
   if (error) return { error: error.message }
 
-  // Un solo fetch del perfil — reutilizado en notificación de usuario y admin
-  const { data: creatorProfile } = await supabase
-    .from('profiles').select('full_name, email').eq('id', user.id).single()
-  const creatorName = creatorProfile?.full_name ?? creatorProfile?.email ?? 'Usuario'
+  const creatorName = profile?.full_name ?? profile?.email ?? 'Usuario'
 
   // Notificación al usuario + historial + admin en paralelo
   const [{ error: notifErr }] = await Promise.all([

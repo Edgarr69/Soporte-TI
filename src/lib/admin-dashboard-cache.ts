@@ -59,21 +59,51 @@ export const getCachedSistemasStats = unstable_cache(
   { revalidate: 300, tags: ['admin-sistemas-tickets'] },
 )
 
-export const getCachedAllMaintenanceTickets = unstable_cache(
-  async () => {
-    // El dashboard solo permite filtrar/graficar dentro de los últimos 12 meses,
-    // así que acotamos la consulta a esa ventana — evita traer años de histórico
-    // completo en cada revalidación a medida que crece el total de solicitudes
-    const since = new Date()
-    since.setMonth(since.getMonth() - 12)
+export interface MantDailyRow {
+  day: string
+  total: number
+  pendiente: number; en_revision: number; asignado: number
+  en_proceso: number; terminado: number; cancelado: number
+  general: number; maquinaria: number
+  assign_sum: number; assign_count: number
+  resol_sum: number; resol_count: number
+}
 
-    const { data } = await createAdminClient()
-      .from('maintenance_tickets')
-      .select('type, status, area_name_snapshot, department_name_snapshot, created_at, assignment_time_minutes, resolution_time_minutes, tecnico_nombre_snapshot')
-      .gte('created_at', since.toISOString())
-      .order('created_at', { ascending: true })
-    return data ?? []
+export interface MantDayDimRow {
+  day: string
+  name: string
+  total: number
+}
+
+/**
+ * Estadísticas del dashboard de mantenimiento agregadas POR DÍA en SQL
+ * (`get_mant_*`, ver migración 012) — el filtro por rango de fechas sigue
+ * siendo instantáneo en el cliente, pero el payload queda acotado por
+ * días × áreas/técnicos en vez de por número de solicitudes.
+ */
+export const getCachedMantenimientoStats = unstable_cache(
+  async () => {
+    const admin = createAdminClient()
+    const [dailyRes, areaRes, tecnicoRes] = await Promise.all([
+      admin.rpc('get_mant_daily_summary'),
+      admin.rpc('get_mant_daily_by_area'),
+      admin.rpc('get_mant_daily_by_tecnico'),
+    ])
+    // Si una RPC falla (p.ej. migración 012 sin aplicar) el dashboard se ve
+    // vacío — dejar rastro en el log del servidor para poder diagnosticarlo
+    for (const [fn, res] of [
+      ['get_mant_daily_summary', dailyRes],
+      ['get_mant_daily_by_area', areaRes],
+      ['get_mant_daily_by_tecnico', tecnicoRes],
+    ] as const) {
+      if (res.error) console.error(`[getCachedMantenimientoStats] ${fn}:`, res.error.message)
+    }
+    return {
+      daily:     (dailyRes.data ?? []) as MantDailyRow[],
+      byArea:    (areaRes.data ?? []) as MantDayDimRow[],
+      byTecnico: (tecnicoRes.data ?? []) as MantDayDimRow[],
+    }
   },
-  ['admin-mantenimiento-tickets-all'],
+  ['admin-mantenimiento-stats'],
   { revalidate: 300, tags: ['admin-mantenimiento-tickets'] },
 )

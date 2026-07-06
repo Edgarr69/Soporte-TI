@@ -1,16 +1,12 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import type { MantDailyRow, MantDayDimRow } from '@/lib/admin-dashboard-cache'
 
-interface Ticket {
-  type: string
-  status: string
-  area_name_snapshot: string | null
-  department_name_snapshot: string | null
-  created_at: string
-  assignment_time_minutes: number | null
-  resolution_time_minutes: number | null
-  tecnico_nombre_snapshot: string | null
+interface Stats {
+  daily:     MantDailyRow[]
+  byArea:    MantDayDimRow[]
+  byTecnico: MantDayDimRow[]
 }
 
 const AdminMantenimientoDashboardDynamic = dynamic(
@@ -18,6 +14,6 @@ const AdminMantenimientoDashboardDynamic = dynamic(
   { ssr: false }
 )
 
-export function AdminMantenimientoDashboardLazy({ tickets }: { tickets: Ticket[] }) {
-  return <AdminMantenimientoDashboardDynamic tickets={tickets} />
+export function AdminMantenimientoDashboardLazy({ stats }: { stats: Stats }) {
+  return <AdminMantenimientoDashboardDynamic stats={stats} />
 }

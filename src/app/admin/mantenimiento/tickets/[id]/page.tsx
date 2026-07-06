@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import { AdminMaintenanceDetail } from '@/components/mantenimiento/admin-maintenance-detail'
 import { getCachedTechnicians } from '@/lib/catalog-cache'
 import { getAuthedProfile } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export default async function AdminMaintenanceTicketDetailPage({
   params,
@@ -49,9 +50,27 @@ export default async function AdminMaintenanceTicketDetailPage({
       .from('maintenance_evidencias')
       .select('id, file_name, file_path, type, created_at')
       .eq('ticket_id', id)
-      .order('created_at', { ascending: true }),
+      .order('created_at', { ascending: true })
+      .limit(100),
     getCachedTechnicians(),
   ])
+
+  // El bucket es privado: signed URLs (1 h) generadas aquí, tras validar
+  // el rol admin — el cliente nunca construye URLs de storage
+  const evidenciasList = evidencias ?? []
+  const signedByPath = new Map<string, string>()
+  if (evidenciasList.length > 0) {
+    const { data: signed } = await createAdminClient().storage
+      .from('maintenance-docs')
+      .createSignedUrls(evidenciasList.map((e) => e.file_path), 3600)
+    for (const s of signed ?? []) {
+      if (s.signedUrl && s.path) signedByPath.set(s.path, s.signedUrl)
+    }
+  }
+  const evidenciasWithUrl = evidenciasList.map((e) => ({
+    ...e,
+    url: signedByPath.get(e.file_path) ?? null,
+  }))
 
   const history = statusHistory ?? []
   const lastEntry = history[history.length - 1]
@@ -73,9 +92,8 @@ export default async function AdminMaintenanceTicketDetailPage({
       ticket={ticket as unknown as Parameters<typeof AdminMaintenanceDetail>[0]['ticket']}
       statusHistory={history}
       comments={normalizedComments as unknown as Parameters<typeof AdminMaintenanceDetail>[0]['comments']}
-      evidencias={evidencias ?? []}
+      evidencias={evidenciasWithUrl}
       technicians={technicians as { id: string; full_name: string | null; email: string }[]}
-      supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}
       currentUserId={user.id}
       currentUserName={profile?.full_name ?? user.email ?? ''}
       isReopened={isReopened}

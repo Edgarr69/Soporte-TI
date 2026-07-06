@@ -46,6 +46,8 @@ interface Evidencia {
   file_path: string
   type: 'pdf_sistema' | 'evidencia'
   created_at: string
+  // Signed URL generada server-side (bucket privado); null si falló la firma
+  url: string | null
 }
 
 interface Technician {
@@ -83,14 +85,13 @@ interface Props {
   comments: Comment[]
   evidencias: Evidencia[]
   technicians: Technician[]
-  supabaseUrl: string
   currentUserId: string
   currentUserName: string
   isReopened?: boolean
 }
 
 export function AdminMaintenanceDetail({
-  ticket, statusHistory, comments, evidencias, technicians, supabaseUrl,
+  ticket, statusHistory, comments, evidencias, technicians,
   currentUserId, currentUserName, isReopened = false,
 }: Props) {
   const router = useRouter()
@@ -156,10 +157,6 @@ export function AdminMaintenanceDetail({
 
   const nextStatuses = MAINTENANCE_TRANSITIONS[ticket.status] ?? []
   const canAssign = nextStatuses.includes('asignado')
-
-  function storageUrl(path: string) {
-    return `${supabaseUrl}/storage/v1/object/public/maintenance-docs/${path}`
-  }
 
   async function transition(to: MaintenanceStatus, opts?: Parameters<typeof changeMaintenanceStatus>[2]) {
     setTrans(true)
@@ -551,7 +548,7 @@ export function AdminMaintenanceDetail({
                     <RefreshCw className={`h-3 w-3 mr-1 ${generatingPdf ? 'animate-spin' : ''}`} />
                     Regenerar
                   </Button>
-                  {(needsPdfRegen || pdfBlockedByReopen) ? (
+                  {(needsPdfRegen || pdfBlockedByReopen || !pdfSistema.url) ? (
                     <span className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-zinc-300 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 text-xs font-medium cursor-not-allowed"
                       title={pdfBlockedByReopen ? 'Asigna un técnico y fecha antes de descargar' : 'Regenera el PDF antes de descargar'}>
                       <Download className="h-3 w-3" />
@@ -559,7 +556,7 @@ export function AdminMaintenanceDetail({
                     </span>
                   ) : (
                     <a
-                      href={`${storageUrl(pdfSistema.file_path)}?t=${pdfCacheBust}`}
+                      href={`${pdfSistema.url}&t=${pdfCacheBust}`}
                       download={pdfSistema.file_name}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -576,10 +573,14 @@ export function AdminMaintenanceDetail({
               {otherEvid.map((ev) => (
                 <div key={ev.id} className="flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
                   <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                  <a href={storageUrl(ev.file_path)} target="_blank" rel="noopener noreferrer"
-                    className="text-sm flex-1 truncate hover:underline">
-                    {ev.file_name}
-                  </a>
+                  {ev.url ? (
+                    <a href={ev.url} target="_blank" rel="noopener noreferrer"
+                      className="text-sm flex-1 truncate hover:underline">
+                      {ev.file_name}
+                    </a>
+                  ) : (
+                    <span className="text-sm flex-1 truncate text-zinc-500">{ev.file_name}</span>
+                  )}
                   <span className="text-xs text-zinc-400 mr-1">{formatDate(ev.created_at)}</span>
                   {(ticket.status !== 'terminado' || unlockEvidEdit) && (
                     <Button

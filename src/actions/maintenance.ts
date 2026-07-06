@@ -15,19 +15,35 @@ import fs from 'fs'
 const LOGO_SRC_PATH  = path.join(process.cwd(), 'fotos', 'logoo.png')
 const LOGO_PUBLIC_PATH = path.join(process.cwd(), 'public', 'logoo.png')
 
+// El logo no cambia en runtime — leerlo del disco una vez por proceso
+// en vez de en cada PDF generado
+let logoSrcCache: string | null | undefined
+
 function getLogoSrc(): string | null {
+  if (logoSrcCache !== undefined) return logoSrcCache
   try {
     // Leer como base64 — más confiable que HTTP en react-pdf (no depende de NEXT_PUBLIC_APP_URL)
     const logoPath = fs.existsSync(LOGO_PUBLIC_PATH) ? LOGO_PUBLIC_PATH
                    : fs.existsSync(LOGO_SRC_PATH)    ? LOGO_SRC_PATH
                    : null
-    if (!logoPath) return null
+    if (!logoPath) { logoSrcCache = null; return null }
     const buf = fs.readFileSync(logoPath)
-    return `data:image/png;base64,${buf.toString('base64')}`
+    logoSrcCache = `data:image/png;base64,${buf.toString('base64')}`
   } catch (e) {
     console.error('[logo] ERROR:', e)
-    return null
+    logoSrcCache = null
   }
+  return logoSrcCache
+}
+
+// Extensión derivada del MIME ya validado — nunca del nombre del archivo,
+// para que un "foto.exe" con MIME válido no termine guardado como .exe
+const MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg':      'jpg',
+  'image/jpg':       'jpg',
+  'image/png':       'png',
+  'image/webp':      'webp',
+  'application/pdf': 'pdf',
 }
 
 
@@ -126,7 +142,7 @@ export async function createMaintenanceTicket(formData: FormData) {
   const PHOTO_ALLOWED_MIMES = ['image/jpeg', 'image/jpg', 'image/png']
   if (photoFile && photoFile.size > 0 && PHOTO_ALLOWED_MIMES.includes(photoFile.type) && photoFile.size <= 10 * 1024 * 1024) {
     try {
-      const ext       = photoFile.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+      const ext       = MIME_TO_EXT[photoFile.type] ?? 'jpg'
       const photoPath = `maintenance/${ticket.id}/evidencia-${crypto.randomUUID()}.${ext}`
       const safeName  = path.basename(photoFile.name).slice(0, 255)
       const buf       = Buffer.from(await photoFile.arrayBuffer())
@@ -487,7 +503,7 @@ export async function uploadEvidencia(
     if (!EVIDENCIA_ALLOWED_MIMES.includes(file.type)) return
     if (file.size > EVIDENCIA_MAX_SIZE) return
 
-    const ext      = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+    const ext      = MIME_TO_EXT[file.type] ?? 'bin'
     const filePath = `maintenance/${ticketId}/evidencia-${crypto.randomUUID()}.${ext}`
     const safeName = path.basename(file.name).slice(0, 255)
 

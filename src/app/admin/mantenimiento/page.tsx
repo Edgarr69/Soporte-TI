@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { AdminMantenimientoDashboardLazy } from '@/components/mantenimiento/admin-mant-dashboard-lazy'
-import { getCachedAllMaintenanceTickets } from '@/lib/admin-dashboard-cache'
+import { getCachedMantenimientoStats } from '@/lib/admin-dashboard-cache'
 import { getAuthedProfile } from '@/lib/auth'
 
 export default async function AdminMantenimientoPage() {
@@ -12,7 +12,7 @@ export default async function AdminMantenimientoPage() {
   if (!profile || !['admin_mantenimiento', 'super_admin'].includes(profile.role))
     redirect('/dashboard')
 
-  const all = await getCachedAllMaintenanceTickets()
+  const stats = await getCachedMantenimientoStats()
 
-  return <AdminMantenimientoDashboardLazy tickets={all} />
+  return <AdminMantenimientoDashboardLazy stats={stats} />
 }

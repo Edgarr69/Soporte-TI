@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
   },
+  experimental: {
+    serverActions: {
+      // uploadEvidencia acepta hasta 5 archivos × 10 MB (validado server-side);
+      // sin esto Next rechaza el FormData con 413 al superar el default de 1 MB
+      bodySizeLimit: '60mb',
+    },
+  },
   async headers() {
     return [
       {

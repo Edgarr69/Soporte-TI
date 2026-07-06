@@ -17,12 +17,14 @@ export default async function MisTicketsPage() {
         .from('tickets')
         .select('id, folio, status, priority, description, is_reopened, created_at, ticket_categories(name), ticket_subcategories(name)')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        .limit(150),
       supabase
         .from('maintenance_tickets')
         .select('id, folio, type, status, servicio, descripcion, created_at, encargado_nombre')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        .limit(150),
     ])
 
   const normalizedSysTickets = (sysTickets ?? []).map((t) => ({

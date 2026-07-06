@@ -4,7 +4,14 @@ import { redirect } from 'next/navigation'
 import { UsersView } from '@/components/admin/users-view'
 import { getAuthedProfile } from '@/lib/auth'
 
-export default async function AdminUsuariosPage() {
+const PAGE_SIZE = 50
+
+export default async function AdminUsuariosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const params = await searchParams
   const { supabase, user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
 
@@ -19,13 +26,17 @@ export default async function AdminUsuariosPage() {
   }
   const rolesToShow = visibleRoles[profile.role] ?? ['usuario']
 
-  const [{ data: users }, { data: departments }] = await Promise.all([
+  const page = Math.max(1, Number(params.page) || 1)
+  const from = (page - 1) * PAGE_SIZE
+  const to   = from + PAGE_SIZE - 1
+
+  const [{ data: users, count }, { data: departments }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, email, full_name, role, first_login_completed, created_at, department:departments(name)')
+      .select('id, email, full_name, role, first_login_completed, created_at, department:departments(name)', { count: 'exact' })
       .in('role', rolesToShow)
       .order('created_at', { ascending: false })
-      .limit(200),
+      .range(from, to),
     supabase.from('departments').select('id, name').order('name'),
   ])
 
@@ -35,6 +46,9 @@ export default async function AdminUsuariosPage() {
       departments={departments ?? []}
       currentRole={profile.role}
       currentUserId={user.id}
+      page={page}
+      totalPages={Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))}
+      totalCount={count ?? 0}
     />
   )
 }

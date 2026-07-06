@@ -82,7 +82,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
     } else {
       const { data } = await supabase
         .from('notifications')
-        .select('*')
+        .select('id, user_id, ticket_id, type, module, title, body, is_read, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(20)

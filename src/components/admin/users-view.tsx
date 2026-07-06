@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { LinkButton } from '@/components/ui/link-button'
 import { ROLE_LABELS, type Role } from '@/lib/types'
 import { cn, formatDate } from '@/lib/utils'
 import { createUser, updateUserRole } from '@/actions/users'
@@ -29,6 +30,9 @@ interface Props {
   departments:   { id: string; name: string }[]
   currentRole:   string
   currentUserId: string
+  page:          number
+  totalPages:    number
+  totalCount:    number
 }
 
 const ROLE_OPTIONS: Role[] = [
@@ -43,7 +47,7 @@ const ROLE_COLORS: Record<string, string> = {
   tecnico_mantenimiento:  'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
 }
 
-export function UsersView({ users, departments, currentRole, currentUserId }: Props) {
+export function UsersView({ users, departments, currentRole, currentUserId, page, totalPages, totalCount }: Props) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
 
@@ -63,7 +67,7 @@ export function UsersView({ users, departments, currentRole, currentUserId }: Pr
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
           Usuarios
-          <span className="ml-2 text-sm font-normal text-zinc-400">({users.length})</span>
+          <span className="ml-2 text-sm font-normal text-zinc-400">({totalCount})</span>
         </h1>
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>
           <UserPlus className="h-4 w-4 mr-1.5" />
@@ -92,6 +96,26 @@ export function UsersView({ users, departments, currentRole, currentUserId }: Pr
           />
         ))}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-xs text-zinc-400">
+            Página {page} de {totalPages}
+          </span>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <LinkButton href={`/admin/usuarios?page=${page - 1}`} variant="outline" size="sm">
+                Anterior
+              </LinkButton>
+            )}
+            {page < totalPages && (
+              <LinkButton href={`/admin/usuarios?page=${page + 1}`} variant="outline" size="sm">
+                Siguiente
+              </LinkButton>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
