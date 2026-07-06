@@ -84,8 +84,10 @@ export function toNotifItem(n: Notification): NotifItem {
 
 export function toAdminNotifItem(n: AdminNotification): NotifItem {
   let href: string | null = null
-  if (n.target_type === 'ticket')             href = `/admin/sistemas/tickets/${n.target_id}`
-  if (n.target_type === 'maintenance_ticket') href = `/admin/mantenimiento/tickets/${n.target_id}`
+  if (n.target_id) {
+    if (n.target_type === 'ticket')             href = `/admin/sistemas/tickets/${n.target_id}`
+    if (n.target_type === 'maintenance_ticket') href = `/admin/mantenimiento/tickets/${n.target_id}`
+  }
   return {
     id:         n.id,
     title:      n.title,

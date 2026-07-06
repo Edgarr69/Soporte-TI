@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Notification, AdminNotification, Role } from '@/lib/types'
 import { cn, formatLocale } from '@/lib/utils'
 import { NotifDetailModal, toNotifItem, toAdminNotifItem, type NotifItem } from './notif-detail-modal'
+import { NotificationToastStack } from './notification-toast-stack'
 
 const ADMIN_ROLES: Role[] = ['admin_sistemas', 'admin_mantenimiento', 'super_admin']
 
@@ -34,6 +35,15 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
   const [loaded, setLoaded]       = useState(false)
   const [selected, setSelected]   = useState<NotifItem | null>(null)
   const [markingAll, setMarkingAll] = useState(false)
+  const [popups, setPopups]       = useState<NotifItem[]>([])
+
+  function pushPopup(item: NotifItem) {
+    setPopups((prev) => prev.some((p) => p.id === item.id) ? prev : [item, ...prev])
+  }
+
+  function dismissPopup(id: string) {
+    setPopups((prev) => prev.filter((p) => p.id !== id))
+  }
 
   useEffect(() => { setCount(initialCount) }, [initialCount])
 
@@ -45,12 +55,19 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
           .channel(`admin-notifications-bell-${userId}`)
           .on('postgres_changes', {
             event: 'INSERT', schema: 'public', table: 'admin_notifications',
-          }, async () => {
+          }, async (payload) => {
+            const row = payload.new as AdminNotification
+            // Mismo filtro por módulo que notifications-view.tsx: cada admin
+            // de módulo solo debe ver popups de su propio módulo
+            if (role === 'admin_sistemas'      && row.module !== 'sistemas')      return
+            if (role === 'admin_mantenimiento' && row.module !== 'mantenimiento') return
+
             // El conteo depende del módulo según el rol — recalculamos con la
             // misma RPC que usa el layout en vez de duplicar esa lógica aquí
             const { data } = await supabase.rpc('get_admin_unread_count')
             if (typeof data === 'number') setCount(data)
             setLoaded(false)
+            pushPopup(toAdminNotifItem(row))
             router.refresh()
           })
           .subscribe()
@@ -63,6 +80,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
             const row = payload.new as Notification
             setCount((c) => c + 1)
             setItems((prev) => prev.some((n) => n.id === row.id) ? prev : [toNotifItem(row), ...prev])
+            pushPopup(toNotifItem(row))
             router.refresh()
           })
           .subscribe()
@@ -94,6 +112,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
   async function openDetail(item: NotifItem) {
     setOpen(false)
     setSelected(item)
+    dismissPopup(item.id)
     if (!item.is_read) {
       if (isAdmin) {
         await supabase.rpc('mark_admin_notification_read', { p_notification_id: item.id })
@@ -212,6 +231,8 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
       {selected && (
         <NotifDetailModal item={selected} onClose={() => setSelected(null)} />
       )}
+
+      <NotificationToastStack popups={popups} onDismiss={dismissPopup} onOpen={openDetail} />
     </>
   )
 }
