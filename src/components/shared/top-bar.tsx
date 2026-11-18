@@ -53,6 +53,7 @@ export function TopBar({ unreadCount, userId, role }: Props) {
       {/* Botón hamburguesa - solo móvil */}
       <button
         className="sm:hidden p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors relative z-10"
+        data-sidebar-toggle
         onClick={() => window.dispatchEvent(new CustomEvent('sidebar:toggle'))}
         aria-label="Abrir menú"
       >

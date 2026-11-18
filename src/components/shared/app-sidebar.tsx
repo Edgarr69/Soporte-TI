@@ -107,6 +107,20 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
     return () => window.removeEventListener('sidebar:toggle', handler)
   }, [])
 
+  // Cerrar al hacer click fuera del sidebar (escritorio; en móvil lo cubre el backdrop)
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: PointerEvent) => {
+      const target = e.target as Element | null
+      if (!target) return
+      if (sidebarRef.current?.contains(target)) return
+      if (target.closest('[data-sidebar-toggle]')) return
+      setIsOpen(false)
+    }
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [isOpen])
+
   async function handleLogout() {
     setIsOpen(false)
     await supabase.auth.signOut()
