@@ -83,3 +83,16 @@ export const getCachedTechnicians = unstable_cache(
   ['technicians'],
   { revalidate: 3600, tags: ['technicians'] },
 )
+
+export const getCachedSeguridadCategories = unstable_cache(
+  async () => {
+    const { data } = await getClient()
+      .from('seguridad_categories')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('sort_order')
+    return data ?? []
+  },
+  ['seguridad-categories'],
+  { revalidate: 3600, tags: ['seguridad-categories'] },
+)

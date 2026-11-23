@@ -14,6 +14,10 @@ const MAINTENANCE_TYPES: AdminNotificationType[] = [
   'maintenance_created', 'maintenance_status_changed',
   'maintenance_assigned', 'maintenance_closed', 'maintenance_cancelled',
 ]
+const SEGURIDAD_TYPES: AdminNotificationType[] = [
+  'seguridad_created', 'seguridad_status_changed', 'seguridad_closed',
+  'seguridad_cancelled', 'seguridad_reopened',
+]
 const SISTEMAS_TYPES: AdminNotificationType[] = [
   'ticket_created', 'ticket_status_changed', 'ticket_closed', 'ticket_reopened',
 ]
@@ -21,6 +25,7 @@ const SISTEMAS_TYPES: AdminNotificationType[] = [
 function effectiveModule(n: AdminNotification): AdminNotificationModule {
   if (n.module) return n.module
   if (MAINTENANCE_TYPES.includes(n.type)) return 'mantenimiento'
+  if (SEGURIDAD_TYPES.includes(n.type))   return 'seguridad'
   if (SISTEMAS_TYPES.includes(n.type))    return 'sistemas'
   return 'global'
 }
@@ -31,6 +36,7 @@ const SUPER_FILTERS: { value: AdminNotificationModule | 'all'; label: string }[]
   { value: 'all',           label: 'Todos'         },
   { value: 'sistemas',      label: 'Sistemas'       },
   { value: 'mantenimiento', label: 'Mantenimiento'  },
+  { value: 'seguridad',     label: 'Seguridad'      },
   { value: 'global',        label: 'Global'         },
 ]
 
@@ -39,6 +45,7 @@ const SUPER_FILTERS: { value: AdminNotificationModule | 'all'; label: string }[]
 const MODULE_DOT: Record<string, string> = {
   sistemas:      'bg-blue-500',
   mantenimiento: 'bg-amber-500',
+  seguridad:     'bg-emerald-500',
   global:        'bg-violet-500',
 }
 

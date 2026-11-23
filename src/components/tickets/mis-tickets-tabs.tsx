@@ -5,11 +5,14 @@ import Link from 'next/link'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Monitor, Wrench, Ticket } from 'lucide-react'
+import { Monitor, Wrench, Ticket, ShieldAlert } from 'lucide-react'
 import {
   STATUS_LABELS, STATUS_COLORS, PRIORITY_COLORS,
   MAINTENANCE_STATUS_LABELS, MAINTENANCE_STATUS_COLORS,
+  SEGURIDAD_STATUS_LABELS, SEGURIDAD_STATUS_COLORS,
+  NIVEL_RIESGO_LABELS, NIVEL_RIESGO_COLORS,
   type TicketStatus, type Priority, type MaintenanceStatus,
+  type SeguridadStatus, type NivelRiesgo,
 } from '@/lib/types'
 import { formatDate, cn } from '@/lib/utils'
 import { LinkButton } from '@/components/ui/link-button'
@@ -26,14 +29,21 @@ interface MaintRow {
   servicio: string; descripcion: string; created_at: string; encargado_nombre: string
 }
 
+interface SegRow {
+  id: string; folio: string; status: string; nivel_riesgo: string
+  category_name_snapshot: string | null; area_name_snapshot: string | null
+  descripcion: string; created_at: string
+}
+
 interface Props {
   sysTickets:    SysRow[]
   generalTickets: MaintRow[]
   maqTickets:    MaintRow[]
+  segTickets:    SegRow[]
   canMaquinaria?: boolean
 }
 
-export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets, canMaquinaria = true }: Props) {
+export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets, segTickets, canMaquinaria = true }: Props) {
   const searchParams = useSearchParams()
   const defaultTab   = searchParams.get('tab') ?? 'sistemas'
 
@@ -60,6 +70,12 @@ export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets, canMaqu
             <span className="sr-only">({maqTickets.length})</span>
           </TabsTrigger>
         )}
+        <TabsTrigger value="seguridad" className="gap-1.5">
+          <ShieldAlert aria-hidden="true" className="h-3.5 w-3.5" />
+          Seguridad
+          <Badge variant="outline" aria-hidden="true" className="ml-1 text-xs px-1.5 py-0 h-4">{segTickets.length}</Badge>
+          <span className="sr-only">({segTickets.length})</span>
+        </TabsTrigger>
       </TabsList>
 
       {/* ── Sistemas ── */}
@@ -121,6 +137,45 @@ export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets, canMaqu
           <MaintListSection items={maqTickets} empty="No tienes solicitudes de maquinaria." />
         </TabsContent>
       )}
+
+      {/* ── Seguridad e Higiene ── */}
+      <TabsContent value="seguridad">
+        <div className="flex justify-end mb-3">
+          <LinkButton href="/seguridad/nuevo" size="sm">+ Nuevo reporte</LinkButton>
+        </div>
+        <TicketListSection
+          items={segTickets}
+          empty="No tienes reportes de seguridad e higiene."
+          renderItem={(t) => (
+            <Link key={t.id} href={`/seguridad/${t.id}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+              <Card className="border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-zinc-400">{t.folio}</span>
+                        <span className="text-sm font-semibold truncate">{t.category_name_snapshot ?? 'Reporte'}</span>
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1">{t.descripcion}</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {t.area_name_snapshot ?? '—'} · {formatDate(t.created_at)}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                      <Badge className={cn('text-xs', SEGURIDAD_STATUS_COLORS[t.status as SeguridadStatus])}>
+                        {SEGURIDAD_STATUS_LABELS[t.status as SeguridadStatus]}
+                      </Badge>
+                      <Badge className={cn('text-xs', NIVEL_RIESGO_COLORS[t.nivel_riesgo as NivelRiesgo])}>
+                        {NIVEL_RIESGO_LABELS[t.nivel_riesgo as NivelRiesgo]}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          )}
+        />
+      </TabsContent>
     </Tabs>
   )
 }

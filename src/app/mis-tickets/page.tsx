@@ -11,7 +11,7 @@ export default async function MisTicketsPage() {
   if (!user) redirect('/login')
   if (!profile?.first_login_completed) redirect('/completar-perfil')
 
-  const [{ data: sysTickets }, { data: maintTickets }] =
+  const [{ data: sysTickets }, { data: maintTickets }, { data: segTickets }] =
     await Promise.all([
       supabase
         .from('tickets')
@@ -22,6 +22,12 @@ export default async function MisTicketsPage() {
       supabase
         .from('maintenance_tickets')
         .select('id, folio, type, status, servicio, descripcion, created_at, encargado_nombre')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(150),
+      supabase
+        .from('seguridad_tickets')
+        .select('id, folio, status, nivel_riesgo, category_name_snapshot, area_name_snapshot, descripcion, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(150),
@@ -48,6 +54,7 @@ export default async function MisTicketsPage() {
           sysTickets={normalizedSysTickets as unknown as Parameters<typeof MisTicketsTabs>[0]['sysTickets']}
           generalTickets={generalTickets ?? []}
           maqTickets={maqTickets ?? []}
+          segTickets={segTickets ?? []}
           canMaquinaria={(profile?.department?.allowed_ticket_types ?? ['general', 'maquinaria']).includes('maquinaria')}
         />
     </main>

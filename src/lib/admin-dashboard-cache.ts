@@ -107,3 +107,80 @@ export const getCachedMantenimientoStats = unstable_cache(
   ['admin-mantenimiento-stats'],
   { revalidate: 300, tags: ['admin-mantenimiento-tickets'] },
 )
+
+export interface SeguridadSummary {
+  total: number
+  pendiente: number; en_revision: number; en_proceso: number
+  terminado: number; cancelado: number
+  bajo: number; medio: number; alto: number; critico: number
+  abiertos_criticos: number
+  avg_first_response: number | null
+  avg_resolution: number | null
+}
+
+const EMPTY_SEGURIDAD: SeguridadSummary = {
+  total: 0, pendiente: 0, en_revision: 0, en_proceso: 0, terminado: 0, cancelado: 0,
+  bajo: 0, medio: 0, alto: 0, critico: 0, abiertos_criticos: 0,
+  avg_first_response: null, avg_resolution: null,
+}
+
+/**
+ * Estadísticas del módulo de Seguridad e Higiene (últimos 12 meses),
+ * agregadas en SQL (`get_seguridad_*`, ver migración 013).
+ */
+export const getCachedSeguridadStats = unstable_cache(
+  async () => {
+    const admin = createAdminClient()
+    const [summaryRes, categoryRes, areaRes, monthRes, recentRes] = await Promise.all([
+      admin.rpc('get_seguridad_summary'),
+      admin.rpc('get_seguridad_by_category'),
+      admin.rpc('get_seguridad_by_area'),
+      admin.rpc('get_seguridad_by_month'),
+      admin
+        .from('seguridad_tickets')
+        .select('id, folio, status, nivel_riesgo, category_name_snapshot, area_name_snapshot, created_at')
+        .in('status', ['pendiente', 'en_revision', 'en_proceso'])
+        .order('created_at', { ascending: false })
+        .limit(8),
+    ])
+    for (const [fn, res] of [
+      ['get_seguridad_summary', summaryRes],
+      ['get_seguridad_by_category', categoryRes],
+      ['get_seguridad_by_area', areaRes],
+      ['get_seguridad_by_month', monthRes],
+    ] as const) {
+      if (res.error) console.error(`[getCachedSeguridadStats] ${fn}:`, res.error.message)
+    }
+
+    const raw = summaryRes.data?.[0] as Record<string, number | string | null> | undefined
+    // bigint/numeric llegan como string o number según el driver — normalizar
+    const num = (v: unknown) => (v === null || v === undefined ? null : Number(v))
+    const summary: SeguridadSummary = raw
+      ? {
+          total: num(raw.total) ?? 0,
+          pendiente: num(raw.pendiente) ?? 0, en_revision: num(raw.en_revision) ?? 0,
+          en_proceso: num(raw.en_proceso) ?? 0, terminado: num(raw.terminado) ?? 0,
+          cancelado: num(raw.cancelado) ?? 0,
+          bajo: num(raw.bajo) ?? 0, medio: num(raw.medio) ?? 0,
+          alto: num(raw.alto) ?? 0, critico: num(raw.critico) ?? 0,
+          abiertos_criticos: num(raw.abiertos_criticos) ?? 0,
+          avg_first_response: num(raw.avg_first_response),
+          avg_resolution: num(raw.avg_resolution),
+        }
+      : EMPTY_SEGURIDAD
+
+    const toList = (rows: unknown) =>
+      ((rows ?? []) as { name: string; total: number | string }[]).map((r) => ({ name: r.name, count: Number(r.total) }))
+
+    return {
+      summary,
+      byCategory: toList(categoryRes.data),
+      byArea:     toList(areaRes.data),
+      byMonth:    ((monthRes.data ?? []) as { month: string; total: number | string }[])
+                    .map((r) => ({ month: r.month, total: Number(r.total) })),
+      openTickets: recentRes.data ?? [],
+    }
+  },
+  ['admin-seguridad-stats'],
+  { revalidate: 300, tags: ['admin-seguridad-tickets'] },
+)

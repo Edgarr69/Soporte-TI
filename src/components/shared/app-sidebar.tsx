@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Monitor, Wrench, Settings, Users,
   BarChart3, ShieldCheck, History, Ticket, Bell, LogOut, HardHat,
+  ShieldAlert, ClipboardList,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -36,10 +37,19 @@ const MANTENIMIENTO_ITEMS: NavItem[] = [
   { href: '/admin/historial',                icon: History,         label: 'Historial', badge: true },
 ]
 
+const SEGURIDAD_ITEMS: NavItem[] = [
+  { href: '/admin/seguridad',            icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/seguridad/tickets',    icon: ClipboardList,   label: 'Reportes'  },
+  { href: '/admin/seguridad/catalogos',  icon: Settings,        label: 'Catálogos' },
+  { href: '/admin/usuarios',             icon: Users,           label: 'Usuarios'  },
+  { href: '/admin/historial',            icon: History,         label: 'Historial', badge: true },
+]
+
 const SUPER_ITEMS: NavItem[] = [
   { href: '/admin',                         icon: ShieldCheck,     label: 'General'    },
   { href: '/admin/sistemas',                icon: Monitor,         label: 'Sistemas'   },
   { href: '/admin/mantenimiento',           icon: Wrench,          label: 'Mant.'      },
+  { href: '/admin/seguridad',               icon: ShieldAlert,     label: 'Seguridad'  },
   { href: '/admin/usuarios',                icon: Users,           label: 'Usuarios'   },
   { href: '/admin/sistemas/reportes',       icon: BarChart3,       label: 'Reportes'   },
   { href: '/admin/historial',               icon: History,         label: 'Historial', badge: true },
@@ -59,6 +69,7 @@ const TECNICO_ITEMS: NavItem[] = [
 function itemsForRole(role: Role): NavItem[] {
   if (role === 'admin_sistemas')        return SISTEMAS_ITEMS
   if (role === 'admin_mantenimiento')   return MANTENIMIENTO_ITEMS
+  if (role === 'admin_seguridad')       return SEGURIDAD_ITEMS
   if (role === 'super_admin')           return SUPER_ITEMS
   if (role === 'usuario')               return USUARIO_ITEMS
   if (role === 'tecnico_mantenimiento') return TECNICO_ITEMS
@@ -72,6 +83,7 @@ function isNavActive(href: string, pathname: string): boolean {
         || pathname === '/tickets'
         || pathname.startsWith('/tickets/')
         || pathname.startsWith('/mantenimiento/')
+        || pathname.startsWith('/seguridad/')
   }
   return pathname === href || pathname.startsWith(href + '/')
 }

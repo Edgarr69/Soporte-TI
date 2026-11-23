@@ -23,7 +23,7 @@ export async function createUser(data: {
   const { data: adminProfile } = await supabase
     .from('profiles').select('role').eq('id', user.id).single()
 
-  const allowedRoles: Role[] = ['super_admin', 'admin_sistemas', 'admin_mantenimiento']
+  const allowedRoles: Role[] = ['super_admin', 'admin_sistemas', 'admin_mantenimiento', 'admin_seguridad']
   if (!adminProfile || !allowedRoles.includes(adminProfile.role as Role))
     return { error: 'Sin permiso' }
 
@@ -31,9 +31,10 @@ export async function createUser(data: {
   // las server actions son endpoints públicos — sin esto un admin podría
   // crear cuentas con un rol superior al suyo)
   const creatableRolesByAdmin: Record<string, Role[]> = {
-    super_admin:        ['usuario', 'tecnico_mantenimiento', 'admin_sistemas', 'admin_mantenimiento', 'super_admin'],
+    super_admin:        ['usuario', 'tecnico_mantenimiento', 'admin_sistemas', 'admin_mantenimiento', 'admin_seguridad', 'super_admin'],
     admin_sistemas:     ['usuario'],
     admin_mantenimiento: ['usuario', 'tecnico_mantenimiento'],
+    admin_seguridad:    ['usuario'],
   }
   if (!creatableRolesByAdmin[adminProfile.role]?.includes(data.role))
     return { error: 'Sin permiso para crear usuarios con ese rol' }
@@ -174,7 +175,7 @@ export async function deleteUser(targetUserId: string) {
   const { data: adminProfile } = await supabase
     .from('profiles').select('role').eq('id', user.id).single()
 
-  const allowedRoles: Role[] = ['super_admin', 'admin_sistemas', 'admin_mantenimiento']
+  const allowedRoles: Role[] = ['super_admin', 'admin_sistemas', 'admin_mantenimiento', 'admin_seguridad']
   if (!adminProfile || !allowedRoles.includes(adminProfile.role as Role))
     return { error: 'Sin permiso' }
 
@@ -189,9 +190,10 @@ export async function deleteUser(targetUserId: string) {
   // server actions son endpoints públicos). El rol del target se lee con
   // el cliente de servicio para no depender de la RLS de profiles.
   const deletableRolesByAdmin: Record<string, Role[]> = {
-    super_admin:        ['usuario', 'tecnico_mantenimiento', 'admin_sistemas', 'admin_mantenimiento', 'super_admin'],
+    super_admin:        ['usuario', 'tecnico_mantenimiento', 'admin_sistemas', 'admin_mantenimiento', 'admin_seguridad', 'super_admin'],
     admin_sistemas:     ['usuario'],
     admin_mantenimiento: ['usuario', 'tecnico_mantenimiento'],
+    admin_seguridad:    ['usuario'],
   }
   const { data: targetProfile } = await adminSupabase
     .from('profiles').select('role').eq('id', targetUserId).single()

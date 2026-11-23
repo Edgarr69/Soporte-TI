@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Wrench, Monitor, HardHat, ArrowRight } from 'lucide-react'
+import { Wrench, Monitor, HardHat, ArrowRight, ShieldAlert } from 'lucide-react'
 import type { ProfileExtended } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -33,7 +33,7 @@ export function DashboardHero({
       </div>
 
       {/* ── Tarjetas de acción ── */}
-      <div className={cn('grid grid-cols-1 gap-4 sm:gap-5', canMaquinaria ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
+      <div className={cn('grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2', canMaquinaria ? 'lg:grid-cols-4' : 'lg:grid-cols-3')}>
         <ActionCard
           href="/tickets/nuevo"
           icon={Monitor}
@@ -63,6 +63,16 @@ export function DashboardHero({
             description="Equipos de producción y maquinaria industrial."
           />
         )}
+        <ActionCard
+          href="/seguridad/nuevo"
+          icon={ShieldAlert}
+          iconColor="text-white"
+          iconBg="bg-emerald-600"
+          accentClass="group-hover:bg-emerald-600"
+          title="Seguridad e higiene"
+          description="Condiciones o actos inseguros, incidentes, EPP y limpieza."
+          cta="Crear reporte"
+        />
       </div>
 
     </div>
@@ -70,7 +80,7 @@ export function DashboardHero({
 }
 
 function ActionCard({
-  href, icon: Icon, iconColor, iconBg, accentClass, title, description,
+  href, icon: Icon, iconColor, iconBg, accentClass, title, description, cta = 'Crear solicitud',
 }: {
   href:        string
   icon:        React.ElementType
@@ -79,6 +89,7 @@ function ActionCard({
   accentClass: string
   title:       string
   description: string
+  cta?:        string
 }) {
   return (
     <Link href={href} className="group block">
@@ -102,7 +113,7 @@ function ActionCard({
 
         {/* CTA */}
         <div className="flex items-center gap-1.5 text-sm font-medium text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
-          Crear solicitud
+          {cta}
           <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </div>
       </div>

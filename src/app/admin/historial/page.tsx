@@ -20,12 +20,17 @@ export default async function AdminHistorialPage() {
     'maintenance_created', 'maintenance_status_changed',
     'maintenance_assigned', 'maintenance_closed', 'maintenance_cancelled',
   ]
+  const SEG_TYPES: AdminNotificationType[] = [
+    'seguridad_created', 'seguridad_status_changed', 'seguridad_closed',
+    'seguridad_cancelled', 'seguridad_reopened',
+  ]
   const SIST_TYPES: AdminNotificationType[] = [
     'ticket_created', 'ticket_status_changed', 'ticket_closed', 'ticket_reopened',
   ]
   function notifModule(n: AdminNotification) {
     if (n.module) return n.module
     if (MAINT_TYPES.includes(n.type)) return 'mantenimiento'
+    if (SEG_TYPES.includes(n.type))   return 'seguridad'
     if (SIST_TYPES.includes(n.type))  return 'sistemas'
     return 'global'
   }
@@ -35,6 +40,7 @@ export default async function AdminHistorialPage() {
     const mod = notifModule(n)
     if (role === 'admin_sistemas')      return mod === 'sistemas' || mod === 'global'
     if (role === 'admin_mantenimiento') return mod === 'mantenimiento' || mod === 'global'
+    if (role === 'admin_seguridad')     return mod === 'seguridad' || mod === 'global'
     return true // super_admin ve todo
   })
 

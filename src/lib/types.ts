@@ -6,6 +6,7 @@ export type Role =
   | 'usuario'
   | 'admin_sistemas'
   | 'admin_mantenimiento'
+  | 'admin_seguridad'
   | 'super_admin'
   | 'tecnico_mantenimiento'
 
@@ -13,6 +14,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   usuario:                'Usuario',
   admin_sistemas:         'Admin Sistemas',
   admin_mantenimiento:    'Admin Mantenimiento',
+  admin_seguridad:        'Admin Seguridad e Higiene',
   super_admin:            'Super Admin',
   tecnico_mantenimiento:  'Técnico Mantenimiento',
 }
@@ -25,6 +27,10 @@ export function canManageMantenimiento(role: Role): boolean {
   return role === 'admin_mantenimiento' || role === 'super_admin'
 }
 
+export function canManageSeguridad(role: Role): boolean {
+  return role === 'admin_seguridad' || role === 'super_admin'
+}
+
 export function isAdminAny(role: Role): boolean {
   return role !== 'usuario' && role !== 'tecnico_mantenimiento'
 }
@@ -33,6 +39,7 @@ export function homePathForRole(role: Role): string {
   switch (role) {
     case 'admin_sistemas':        return '/admin/sistemas'
     case 'admin_mantenimiento':   return '/admin/mantenimiento'
+    case 'admin_seguridad':       return '/admin/seguridad'
     case 'super_admin':           return '/admin'
     case 'tecnico_mantenimiento': return '/tecnico'
     default:                      return '/dashboard'
@@ -183,7 +190,7 @@ export interface Notification {
   user_id: string
   ticket_id: string | null
   type: NotificationType
-  module: 'sistemas' | 'mantenimiento' | null
+  module: 'sistemas' | 'mantenimiento' | 'seguridad' | null
   title: string
   body: string | null
   is_read: boolean
@@ -492,8 +499,13 @@ export type AdminNotificationType =
   | 'maintenance_assigned'
   | 'maintenance_closed'
   | 'maintenance_cancelled'
+  | 'seguridad_created'
+  | 'seguridad_status_changed'
+  | 'seguridad_closed'
+  | 'seguridad_cancelled'
+  | 'seguridad_reopened'
 
-export type AdminNotificationModule = 'global' | 'sistemas' | 'mantenimiento'
+export type AdminNotificationModule = 'global' | 'sistemas' | 'mantenimiento' | 'seguridad'
 
 export interface AdminNotification {
   id: string
@@ -516,12 +528,14 @@ export const ADMIN_NOTIFICATION_MODULE_LABELS: Record<AdminNotificationModule, s
   global:        'Global',
   sistemas:      'Sistemas',
   mantenimiento: 'Mantenimiento',
+  seguridad:     'Seguridad e Higiene',
 }
 
 export const ADMIN_NOTIFICATION_MODULE_COLORS: Record<AdminNotificationModule, string> = {
   global:        'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
   sistemas:      'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   mantenimiento: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  seguridad:     'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
 }
 
 // ─── Métricas de mantenimiento ────────────────────────────
@@ -549,4 +563,99 @@ export interface TechnicianMetric {
 export interface AreaMetric {
   area_name: string
   count: number
+}
+
+// ─────────────────────────────────────────────────────────────
+// SEGURIDAD E HIGIENE
+// ─────────────────────────────────────────────────────────────
+
+export type SeguridadStatus =
+  | 'pendiente'
+  | 'en_revision'
+  | 'en_proceso'
+  | 'terminado'
+  | 'cancelado'
+
+export type NivelRiesgo = 'bajo' | 'medio' | 'alto' | 'critico'
+
+// Transiciones permitidas por el admin de seguridad
+export const SEGURIDAD_TRANSITIONS: Record<SeguridadStatus, SeguridadStatus[]> = {
+  pendiente:   ['en_revision', 'cancelado'],
+  en_revision: ['en_proceso', 'terminado', 'cancelado'],
+  en_proceso:  ['terminado', 'cancelado'],
+  terminado:   ['pendiente'],
+  cancelado:   ['pendiente'],
+}
+
+export const SEGURIDAD_STATUS_LABELS: Record<SeguridadStatus, string> = {
+  pendiente:   'Pendiente',
+  en_revision: 'En revisión',
+  en_proceso:  'En atención',
+  terminado:   'Atendido',
+  cancelado:   'Cancelado',
+}
+
+export const SEGURIDAD_STATUS_COLORS: Record<SeguridadStatus, string> = {
+  pendiente:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+  en_revision: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  en_proceso:  'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  terminado:   'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  cancelado:   'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
+}
+
+export const NIVELES_RIESGO: NivelRiesgo[] = ['bajo', 'medio', 'alto', 'critico']
+
+export const NIVEL_RIESGO_LABELS: Record<NivelRiesgo, string> = {
+  bajo:    'Bajo',
+  medio:   'Medio',
+  alto:    'Alto',
+  critico: 'Crítico',
+}
+
+export const NIVEL_RIESGO_DESCRIPTIONS: Record<NivelRiesgo, string> = {
+  bajo:    'Sin riesgo inmediato de lesión',
+  medio:   'Podría causar una lesión leve',
+  alto:    'Podría causar una lesión grave',
+  critico: 'Peligro inminente, requiere atención inmediata',
+}
+
+export const NIVEL_RIESGO_COLORS: Record<NivelRiesgo, string> = {
+  bajo:    'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200',
+  medio:   'bg-blue-500 text-white dark:bg-blue-600',
+  alto:    'bg-orange-500 text-white dark:bg-orange-500',
+  critico: 'bg-red-600 text-white dark:bg-red-600 font-semibold',
+}
+
+export interface SeguridadCategory {
+  id: string
+  name: string
+  is_active: boolean
+  sort_order: number
+  created_at: string
+}
+
+export interface SeguridadTicket {
+  id: string
+  folio: string
+  user_id: string
+  department_id: string | null
+  department_name_snapshot: string | null
+  area_id: string | null
+  area_name_snapshot: string | null
+  category_id: string | null
+  category_name_snapshot: string | null
+  nivel_riesgo: NivelRiesgo
+  ubicacion: string
+  descripcion: string
+  status: SeguridadStatus
+  acciones_correctivas: string | null
+  cancel_reason: string | null
+  reviewed_at: string | null
+  started_at: string | null
+  finished_at: string | null
+  cancelled_at: string | null
+  first_response_minutes: number | null
+  resolution_time_minutes: number | null
+  created_at: string
+  updated_at: string
 }

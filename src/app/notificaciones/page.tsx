@@ -25,6 +25,8 @@ export default async function NotificationsPage() {
     notifQuery = notifQuery.eq('module', 'sistemas')
   } else if (role === 'admin_mantenimiento') {
     notifQuery = notifQuery.eq('module', 'mantenimiento')
+  } else if (role === 'admin_seguridad') {
+    notifQuery = notifQuery.eq('module', 'seguridad')
   }
 
   const { data: notifications } = await notifQuery

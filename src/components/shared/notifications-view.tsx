@@ -37,6 +37,7 @@ export function NotificationsView({ initialNotifications, userId, role }: Props)
         const row = payload.new as Notification
         if (role === 'admin_sistemas'      && row.module !== 'sistemas')      return
         if (role === 'admin_mantenimiento' && row.module !== 'mantenimiento') return
+        if (role === 'admin_seguridad'     && row.module !== 'seguridad')     return
         setNotifications((prev) => prev.some((n) => n.id === row.id) ? prev : [row, ...prev])
       })
       .subscribe()

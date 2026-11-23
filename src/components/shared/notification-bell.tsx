@@ -16,7 +16,7 @@ import { cn, formatLocale } from '@/lib/utils'
 import { NotifDetailModal, toNotifItem, toAdminNotifItem, type NotifItem } from './notif-detail-modal'
 import { NotificationToastStack } from './notification-toast-stack'
 
-const ADMIN_ROLES: Role[] = ['admin_sistemas', 'admin_mantenimiento', 'super_admin']
+const ADMIN_ROLES: Role[] = ['admin_sistemas', 'admin_mantenimiento', 'admin_seguridad', 'super_admin']
 
 interface Props {
   unreadCount: number
@@ -61,6 +61,7 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
             // de módulo solo debe ver popups de su propio módulo
             if (role === 'admin_sistemas'      && row.module !== 'sistemas')      return
             if (role === 'admin_mantenimiento' && row.module !== 'mantenimiento') return
+            if (role === 'admin_seguridad'     && row.module !== 'seguridad')     return
 
             // El conteo depende del módulo según el rol — recalculamos con la
             // misma RPC que usa el layout en vez de duplicar esa lógica aquí

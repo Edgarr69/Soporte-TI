@@ -12,11 +12,13 @@ import { cn, formatLocale } from '@/lib/utils'
 export const MODULE_LABELS: Record<string, string> = {
   sistemas:      'Sistemas',
   mantenimiento: 'Mantenimiento',
+  seguridad:     'Seguridad e Higiene',
   global:        'General',
 }
 export const MODULE_COLORS: Record<string, string> = {
   sistemas:      'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   mantenimiento: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  seguridad:     'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
   global:        'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
 }
 
@@ -32,6 +34,11 @@ const ADMIN_TYPE_LABELS: Record<AdminNotificationType, string> = {
   maintenance_assigned:       'Técnico asignado',
   maintenance_closed:         'Solicitud terminada',
   maintenance_cancelled:      'Solicitud cancelada',
+  seguridad_created:          'Reporte de seguridad creado',
+  seguridad_status_changed:   'Estado de reporte actualizado',
+  seguridad_closed:           'Reporte atendido',
+  seguridad_cancelled:        'Reporte cancelado',
+  seguridad_reopened:         'Reporte reabierto',
 }
 
 const USER_TYPE_LABELS: Record<NotificationType, string> = {
@@ -45,6 +52,7 @@ const USER_TYPE_LABELS: Record<NotificationType, string> = {
 const TARGET_TYPE_LABELS: Record<string, string> = {
   ticket:             'Ticket de sistemas',
   maintenance_ticket: 'Solicitud de mantenimiento',
+  seguridad_ticket:   'Reporte de seguridad',
   user:               'Usuario',
 }
 
@@ -87,6 +95,7 @@ export function toAdminNotifItem(n: AdminNotification): NotifItem {
   if (n.target_id) {
     if (n.target_type === 'ticket')             href = `/admin/sistemas/tickets/${n.target_id}`
     if (n.target_type === 'maintenance_ticket') href = `/admin/mantenimiento/tickets/${n.target_id}`
+    if (n.target_type === 'seguridad_ticket')   href = `/admin/seguridad/tickets/${n.target_id}`
   }
   return {
     id:         n.id,

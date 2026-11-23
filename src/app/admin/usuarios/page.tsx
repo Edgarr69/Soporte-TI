@@ -15,13 +15,14 @@ export default async function AdminUsuariosPage({
   const { supabase, user, profile } = await getAuthedProfile()
   if (!user) redirect('/login')
 
-  const allowed = ['super_admin', 'admin_sistemas', 'admin_mantenimiento']
+  const allowed = ['super_admin', 'admin_sistemas', 'admin_mantenimiento', 'admin_seguridad']
   if (!profile || !allowed.includes(profile.role)) redirect('/dashboard')
 
   // Qué roles puede ver cada admin
   const visibleRoles: Record<string, string[]> = {
-    super_admin:          ['usuario', 'admin_sistemas', 'admin_mantenimiento', 'super_admin', 'tecnico_mantenimiento'],
+    super_admin:          ['usuario', 'admin_sistemas', 'admin_mantenimiento', 'admin_seguridad', 'super_admin', 'tecnico_mantenimiento'],
     admin_sistemas:       ['usuario'],
+    admin_seguridad:      ['usuario'],
     admin_mantenimiento:  ['usuario', 'tecnico_mantenimiento'],
   }
   const rolesToShow = visibleRoles[profile.role] ?? ['usuario']
