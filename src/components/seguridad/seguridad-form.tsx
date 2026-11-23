@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Loader2, ShieldAlert, ImagePlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { compressImage } from '@/lib/image-compress'
 import {
   NIVELES_RIESGO, NIVEL_RIESGO_LABELS, NIVEL_RIESGO_DESCRIPTIONS,
   type NivelRiesgo,
@@ -42,13 +43,18 @@ export function SeguridadForm({ departmentName, areas, categories }: Props) {
   const [photoFile,    setPhotoFile]    = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null
-    if (!file) return
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.target
+    const original = input.files?.[0] ?? null
+    if (!original) return
+    setCompressing(true)
+    const file = await compressImage(original)
+    setCompressing(false)
     if (file.size > 10 * 1024 * 1024) {
       toast.error('La imagen no puede superar 10 MB.')
-      e.target.value = ''
+      input.value = ''
       return
     }
     setPhotoFile(file)
@@ -65,6 +71,10 @@ export function SeguridadForm({ departmentName, areas, categories }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (compressing) {
+      toast.error('Espera a que termine de procesarse la imagen.')
+      return
+    }
     if (!canSubmit) {
       toast.error('Completa todos los campos obligatorios.')
       return
@@ -238,7 +248,9 @@ export function SeguridadForm({ departmentName, areas, categories }: Props) {
             <label className="flex flex-col items-center gap-2 cursor-pointer rounded-md border border-dashed border-zinc-300 dark:border-zinc-700 px-4 py-6 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
               <ImagePlus className="h-7 w-7 text-zinc-400" />
               <span className="text-sm text-zinc-500">Seleccionar imagen</span>
-              <span className="text-xs text-zinc-400">JPG o PNG, máx. 10 MB</span>
+              <span className="text-xs text-zinc-400">
+                {compressing ? 'Procesando imagen…' : 'JPG o PNG, máx. 10 MB'}
+              </span>
               <input
                 ref={photoInputRef}
                 type="file"

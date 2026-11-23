@@ -29,6 +29,7 @@ import {
 } from '@/actions/seguridad'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { compressImages } from '@/lib/image-compress'
 
 interface TicketData {
   id: string
@@ -155,7 +156,8 @@ export function AdminSeguridadDetail({
     if (!files?.length) return
     setUploading(true)
     const fd = new FormData()
-    for (const f of Array.from(files)) fd.append('files', f)
+    const compressed = await compressImages(Array.from(files))
+    for (const f of compressed) fd.append('files', f)
     const r = await uploadSeguridadEvidencia(ticket.id, fd)
     setUploading(false)
     if (fileInputRef.current) fileInputRef.current.value = ''

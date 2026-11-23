@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Loader2, Wrench, ImagePlus, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { compressImage } from '@/lib/image-compress'
 import type { MaintenanceType } from '@/lib/types'
 
 interface Props {
@@ -44,12 +45,22 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
   const [photoFile,    setPhotoFile]    = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
 
   const tipoLabel = tipo === 'general' ? 'Mantenimiento General' : 'Mantenimiento de Maquinaria'
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null
-    if (!file) return
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.target
+    const original = input.files?.[0] ?? null
+    if (!original) return
+    setCompressing(true)
+    const file = await compressImage(original)
+    setCompressing(false)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('La imagen no puede superar 10 MB.')
+      input.value = ''
+      return
+    }
     setPhotoFile(file)
     setPhotoPreview(URL.createObjectURL(file))
   }
@@ -62,6 +73,10 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (compressing) {
+      toast.error('Espera a que termine de procesarse la imagen.')
+      return
+    }
     if (!deptId || !areaId || !encargado.trim() || !servicio.trim() || !descripcion.trim()) {
       toast.error('Completa todos los campos obligatorios.')
       return
@@ -284,7 +299,9 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
             <label className="flex flex-col items-center gap-2 cursor-pointer rounded-md border border-dashed border-zinc-300 dark:border-zinc-700 px-4 py-6 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
               <ImagePlus className="h-7 w-7 text-zinc-400" />
               <span className="text-sm text-zinc-500">Seleccionar imagen</span>
-              <span className="text-xs text-zinc-400">JPG, PNG, WEBP</span>
+              <span className="text-xs text-zinc-400">
+                {compressing ? 'Procesando imagen…' : 'JPG o PNG'}
+              </span>
               <input
                 ref={photoInputRef}
                 type="file"
