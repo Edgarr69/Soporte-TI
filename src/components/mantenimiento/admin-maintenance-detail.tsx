@@ -89,11 +89,12 @@ interface Props {
   currentUserId: string
   currentUserName: string
   isReopened?: boolean
+  origenSeguridad?: { folio: string; status: string } | null
 }
 
 export function AdminMaintenanceDetail({
   ticket, statusHistory, comments, evidencias, technicians,
-  currentUserId, currentUserName, isReopened = false,
+  currentUserId, currentUserName, isReopened = false, origenSeguridad = null,
 }: Props) {
   const router = useRouter()
 
@@ -278,6 +279,11 @@ export function AdminMaintenanceDetail({
               <Badge variant="outline" className="text-xs">
                 {MAINTENANCE_TYPE_LABELS[ticket.type]}
               </Badge>
+              {origenSeguridad && (
+                <Badge className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  Para Seguridad e Higiene · {origenSeguridad.folio}
+                </Badge>
+              )}
               {ticket.prioridad === 'alta' && (
                 <Badge className="text-xs bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
                   Alta prioridad
@@ -496,6 +502,9 @@ export function AdminMaintenanceDetail({
             <CardHeader className="pb-2"><CardTitle className="text-sm">Datos de la solicitud</CardTitle></CardHeader>
             <CardContent className="text-sm space-y-2">
               <Row label="Solicitante"    value={ticket.user?.full_name ?? ticket.user?.email ?? '—'} />
+              {origenSeguridad && (
+                <Row label="Origen" value={`Reporte de Seguridad e Higiene ${origenSeguridad.folio} — al terminar esta solicitud se cierra el reporte`} />
+              )}
               <Row label="Departamento"   value={ticket.department_name_snapshot ?? '—'} />
               <Row label="Área"           value={ticket.area_name_snapshot ?? '—'} />
               <Row label="Encargado"      value={ticket.encargado_nombre} />

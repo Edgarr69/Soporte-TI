@@ -5,6 +5,7 @@ import { AdminSeguridadDetail } from '@/components/seguridad/admin-seguridad-det
 import { getAuthedProfile } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadSeguridadTicketChildren } from '@/lib/seguridad-data'
+import type { MaintenanceStatus } from '@/lib/types'
 
 export default async function AdminSeguridadTicketDetailPage({
   params,
@@ -26,8 +27,14 @@ export default async function AdminSeguridadTicketDetailPage({
     .single()
   if (!ticket) notFound()
 
-  const { statusHistory, comments, evidencias, isReopened } =
-    await loadSeguridadTicketChildren(admin, id, { includeInternal: true })
+  const [{ statusHistory, comments, evidencias, isReopened }, { data: mt }] = await Promise.all([
+    loadSeguridadTicketChildren(admin, id, { includeInternal: true }),
+    ticket.maintenance_ticket_id
+      ? admin.from('maintenance_tickets')
+          .select('folio, status, tecnico_nombre_snapshot')
+          .eq('id', ticket.maintenance_ticket_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
 
   const rawUser = ticket.user as unknown
   const owner = (Array.isArray(rawUser) ? rawUser[0] : rawUser) as { full_name: string | null; email: string } | null
@@ -41,6 +48,21 @@ export default async function AdminSeguridadTicketDetailPage({
       currentUserId={user.id}
       currentUserName={profile.full_name ?? user.email ?? ''}
       isReopened={isReopened}
+      mantSupport={{
+        status:                  ticket.mant_request_status ?? null,
+        type:                    ticket.mant_request_type ?? null,
+        servicio:                ticket.mant_request_servicio ?? null,
+        note:                    ticket.mant_request_note ?? null,
+        requestedAt:             ticket.mant_requested_at ?? null,
+        respondedAt:             ticket.mant_responded_at ?? null,
+        rejectReason:            ticket.mant_reject_reason ?? null,
+        resolvedByMantenimiento: !!ticket.resolved_by_mantenimiento,
+        maintenanceTicket: mt ? {
+          folio:   mt.folio as string,
+          status:  mt.status as MaintenanceStatus,
+          tecnico: (mt.tecnico_nombre_snapshot as string | null) ?? null,
+        } : null,
+      }}
     />
   )
 }

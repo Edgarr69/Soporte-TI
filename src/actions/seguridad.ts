@@ -187,7 +187,7 @@ export async function changeSeguridadStatus(
 
   const { data: ticket } = await supabase
     .from('seguridad_tickets')
-    .select('status, user_id, folio, created_at, reviewed_at, acciones_correctivas')
+    .select('status, user_id, folio, created_at, reviewed_at, acciones_correctivas, mant_request_status, resolved_by_mantenimiento')
     .eq('id', ticketId)
     .single()
   if (!ticket) return { error: 'Reporte no encontrado' }
@@ -195,6 +195,14 @@ export async function changeSeguridadStatus(
   const from = ticket.status as SeguridadStatus
   if (!SEGURIDAD_TRANSITIONS[from]?.includes(newStatus))
     return { error: 'Transición de estado no válida' }
+
+  // Mientras Mantenimiento tiene el reporte, solo Mantenimiento lo cierra
+  if (newStatus === 'terminado' || newStatus === 'cancelado') {
+    if (ticket.mant_request_status === 'pendiente')
+      return { error: 'Hay una solicitud de apoyo pendiente con Mantenimiento. Retírala primero.' }
+    if (ticket.mant_request_status === 'aceptada')
+      return { error: 'Este reporte lo está atendiendo Mantenimiento; se cerrará cuando terminen.' }
+  }
 
   const comment  = options?.comment?.trim()  || undefined
   const acciones = options?.acciones_correctivas?.trim() || undefined
@@ -226,6 +234,12 @@ export async function changeSeguridadStatus(
     updates.cancelled_at            = null
     updates.cancel_reason           = null
     updates.resolution_time_minutes = null
+    // Si lo había cerrado Mantenimiento, Seguridad recupera el control
+    // (maintenance_ticket_id se conserva como referencia)
+    if (ticket.resolved_by_mantenimiento) {
+      updates.resolved_by_mantenimiento = false
+      updates.mant_request_status       = null
+    }
   }
 
   const { error } = await supabase.from('seguridad_tickets').update(updates).eq('id', ticketId)

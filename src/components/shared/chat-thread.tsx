@@ -36,9 +36,20 @@ export function ChatThread({
   showInternalToggle = false, isInternal = false, onInternalChange,
 }: Props) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const lastCountRef   = useRef(0)
 
+  // Desplazar SOLO el contenedor de mensajes. scrollIntoView() también
+  // desplaza todos los ancestros con scroll (el <main> de la página), lo que
+  // mandaba la vista hasta abajo al abrir el ticket o tras cada refresh.
+  // Además solo se desplaza cuando llegan mensajes nuevos, no cuando el
+  // padre vuelve a pasar el mismo arreglo tras un router.refresh().
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = messagesEndRef.current?.parentElement
+    if (!container) return
+    const isFirst = lastCountRef.current === 0
+    if (messages.length === lastCountRef.current) return
+    lastCountRef.current = messages.length
+    container.scrollTo({ top: container.scrollHeight, behavior: isFirst ? 'auto' : 'smooth' })
   }, [messages])
 
   return (

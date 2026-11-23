@@ -19,6 +19,7 @@ export default async function AdminSeguridadPage() {
       byArea={stats.byArea}
       byMonth={stats.byMonth}
       openTickets={stats.openTickets}
+      mantByMonth={stats.mantByMonth}
     />
   )
 }

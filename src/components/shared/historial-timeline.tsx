@@ -55,7 +55,7 @@ export function HistorialTimeline({ entries, statusLabels, statusColors }: Props
                       {statusLabels[entry.to_status] ?? entry.to_status}
                     </Badge>
                   )}
-                  {entry.from_status && (
+                  {entry.from_status && entry.from_status !== entry.to_status && (
                     <span className="text-xs text-zinc-400">
                       desde {statusLabels[entry.from_status] ?? entry.from_status}
                     </span>

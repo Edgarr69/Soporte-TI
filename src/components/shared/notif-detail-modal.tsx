@@ -39,6 +39,9 @@ const ADMIN_TYPE_LABELS: Record<AdminNotificationType, string> = {
   seguridad_closed:           'Reporte atendido',
   seguridad_cancelled:        'Reporte cancelado',
   seguridad_reopened:         'Reporte reabierto',
+  seguridad_mant_requested:   'Seguridad solicita apoyo',
+  seguridad_mant_accepted:    'Apoyo aceptado por Mantenimiento',
+  seguridad_mant_rejected:    'Apoyo rechazado por Mantenimiento',
 }
 
 const USER_TYPE_LABELS: Record<NotificationType, string> = {
@@ -53,6 +56,7 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
   ticket:             'Ticket de sistemas',
   maintenance_ticket: 'Solicitud de mantenimiento',
   seguridad_ticket:   'Reporte de seguridad',
+  seguridad_mant_request: 'Solicitud de apoyo de Seguridad',
   user:               'Usuario',
 }
 

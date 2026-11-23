@@ -131,7 +131,7 @@ const EMPTY_SEGURIDAD: SeguridadSummary = {
 export const getCachedSeguridadStats = unstable_cache(
   async () => {
     const admin = createAdminClient()
-    const [summaryRes, categoryRes, areaRes, monthRes, recentRes] = await Promise.all([
+    const [summaryRes, categoryRes, areaRes, monthRes, recentRes, mantRes] = await Promise.all([
       admin.rpc('get_seguridad_summary'),
       admin.rpc('get_seguridad_by_category'),
       admin.rpc('get_seguridad_by_area'),
@@ -142,12 +142,14 @@ export const getCachedSeguridadStats = unstable_cache(
         .in('status', ['pendiente', 'en_revision', 'en_proceso'])
         .order('created_at', { ascending: false })
         .limit(8),
+      admin.rpc('get_seguridad_mant_by_month'),
     ])
     for (const [fn, res] of [
       ['get_seguridad_summary', summaryRes],
       ['get_seguridad_by_category', categoryRes],
       ['get_seguridad_by_area', areaRes],
       ['get_seguridad_by_month', monthRes],
+      ['get_seguridad_mant_by_month', mantRes],
     ] as const) {
       if (res.error) console.error(`[getCachedSeguridadStats] ${fn}:`, res.error.message)
     }
@@ -179,6 +181,13 @@ export const getCachedSeguridadStats = unstable_cache(
       byMonth:    ((monthRes.data ?? []) as { month: string; total: number | string }[])
                     .map((r) => ({ month: r.month, total: Number(r.total) })),
       openTickets: recentRes.data ?? [],
+      mantByMonth: ((mantRes.data ?? []) as Record<string, number | string>[]).map((r) => ({
+        month:       String(r.month),
+        solicitados: Number(r.solicitados),
+        aceptados:   Number(r.aceptados),
+        rechazados:  Number(r.rechazados),
+        terminados:  Number(r.terminados),
+      })),
     }
   },
   ['admin-seguridad-stats'],

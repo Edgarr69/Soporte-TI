@@ -17,6 +17,7 @@ const MAINTENANCE_TYPES: AdminNotificationType[] = [
 const SEGURIDAD_TYPES: AdminNotificationType[] = [
   'seguridad_created', 'seguridad_status_changed', 'seguridad_closed',
   'seguridad_cancelled', 'seguridad_reopened',
+  'seguridad_mant_accepted', 'seguridad_mant_rejected',
 ]
 const SISTEMAS_TYPES: AdminNotificationType[] = [
   'ticket_created', 'ticket_status_changed', 'ticket_closed', 'ticket_reopened',
@@ -24,7 +25,7 @@ const SISTEMAS_TYPES: AdminNotificationType[] = [
 
 function effectiveModule(n: AdminNotification): AdminNotificationModule {
   if (n.module) return n.module
-  if (MAINTENANCE_TYPES.includes(n.type)) return 'mantenimiento'
+  if (MAINTENANCE_TYPES.includes(n.type) || n.type === 'seguridad_mant_requested') return 'mantenimiento'
   if (SEGURIDAD_TYPES.includes(n.type))   return 'seguridad'
   if (SISTEMAS_TYPES.includes(n.type))    return 'sistemas'
   return 'global'

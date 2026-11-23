@@ -30,6 +30,18 @@ export default async function AdminMaintenanceTicketDetailPage({
 
   if (!ticket) notFound()
 
+  // Origen en Seguridad e Higiene: el admin de mantenimiento no tiene RLS
+  // sobre seguridad_tickets, así que el folio se lee con service role
+  let origenSeguridad: { folio: string; status: string } | null = null
+  if (ticket.seguridad_ticket_id) {
+    const { data: seg } = await createAdminClient()
+      .from('seguridad_tickets')
+      .select('folio, status')
+      .eq('id', ticket.seguridad_ticket_id)
+      .maybeSingle()
+    origenSeguridad = seg ?? null
+  }
+
   const [
     { data: statusHistory },
     { data: comments },
@@ -97,6 +109,7 @@ export default async function AdminMaintenanceTicketDetailPage({
       currentUserId={user.id}
       currentUserName={profile?.full_name ?? user.email ?? ''}
       isReopened={isReopened}
+      origenSeguridad={origenSeguridad}
     />
   )
 }

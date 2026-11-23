@@ -26,6 +26,7 @@ interface TicketRow {
   fecha_solicitud: string
   created_at: string
   updated_at: string
+  seguridad_ticket_id?: string | null
   user: { full_name: string | null; email: string } | null
 }
 
@@ -146,6 +147,11 @@ export function AdminMaintenanceList({ tickets, currentFilters, page, totalPages
                       <Badge variant="outline" className="text-xs">
                         {MAINTENANCE_TYPE_LABELS[t.type as MaintenanceType]}
                       </Badge>
+                      {t.seguridad_ticket_id && (
+                        <Badge className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                          Para Seguridad e Higiene
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </CardContent>

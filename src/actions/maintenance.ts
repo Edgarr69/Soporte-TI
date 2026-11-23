@@ -6,6 +6,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import type { MaintenanceStatus, MaintenanceType } from '@/lib/types'
 import { MAINTENANCE_TRANSITIONS } from '@/lib/types'
 import { createAdminNotification } from '@/actions/admin-notifications'
+import { syncSeguridadFromMaintenance } from '@/lib/seguridad-sync'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { MaintenancePdfDocument } from '@/components/mantenimiento/maintenance-pdf-template'
 import React from 'react'
@@ -242,7 +243,7 @@ export async function changeMaintenanceStatus(
 
   const { data: ticket } = await supabase
     .from('maintenance_tickets')
-    .select('status, user_id, folio, created_at, type, department_name_snapshot, area_name_snapshot, encargado_nombre, servicio, descripcion, fecha_solicitud, fecha_termino_estimada')
+    .select('status, user_id, folio, created_at, type, department_name_snapshot, area_name_snapshot, encargado_nombre, servicio, descripcion, fecha_solicitud, fecha_termino_estimada, seguridad_ticket_id')
     .eq('id', ticketId)
     .single()
   if (!ticket) return { error: 'Solicitud no encontrada' }
@@ -373,6 +374,18 @@ export async function changeMaintenanceStatus(
     targetType:  'maintenance_ticket',
     targetFolio: ticket.folio,
   })
+
+  // Solicitud originada en Seguridad e Higiene: reflejar el cambio allá
+  if (ticket.seguridad_ticket_id) {
+    await syncSeguridadFromMaintenance({
+      seguridadTicketId: ticket.seguridad_ticket_id,
+      maintenanceFolio:  ticket.folio,
+      newStatus,
+      actorId:           user.id,
+      actorName:         adminNameM,
+      cancelReason:      options?.cancel_reason,
+    })
+  }
 
   revalidatePath('/admin/mantenimiento/tickets')
   revalidatePath(`/admin/mantenimiento/tickets/${ticketId}`)

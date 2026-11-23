@@ -504,6 +504,9 @@ export type AdminNotificationType =
   | 'seguridad_closed'
   | 'seguridad_cancelled'
   | 'seguridad_reopened'
+  | 'seguridad_mant_requested'
+  | 'seguridad_mant_accepted'
+  | 'seguridad_mant_rejected'
 
 export type AdminNotificationModule = 'global' | 'sistemas' | 'mantenimiento' | 'seguridad'
 
@@ -656,6 +659,26 @@ export interface SeguridadTicket {
   cancelled_at: string | null
   first_response_minutes: number | null
   resolution_time_minutes: number | null
+  mant_request_status: MantRequestStatus | null
+  mant_request_type: MaintenanceType | null
+  mant_request_servicio: string | null
+  mant_request_note: string | null
+  mant_requested_at: string | null
+  mant_responded_at: string | null
+  mant_reject_reason: string | null
+  maintenance_ticket_id: string | null
+  resolved_by_mantenimiento: boolean
   created_at: string
   updated_at: string
+}
+
+// ─── Apoyo de Mantenimiento a Seguridad ───────────────────
+
+export type MantRequestStatus = 'pendiente' | 'aceptada' | 'rechazada' | 'cancelada'
+
+export const MANT_REQUEST_LABELS: Record<MantRequestStatus, string> = {
+  pendiente: 'Esperando respuesta de Mantenimiento',
+  aceptada:  'Aceptado por Mantenimiento',
+  rechazada: 'Rechazado por Mantenimiento',
+  cancelada: 'Cancelado por Mantenimiento',
 }

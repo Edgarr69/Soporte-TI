@@ -11,7 +11,7 @@ import {
 } from '@/lib/types'
 import { cn, formatRelative, minutesToHuman } from '@/lib/utils'
 import type { SeguridadSummary } from '@/lib/admin-dashboard-cache'
-import { AlertTriangle, CheckCircle2, Clock, List, ShieldAlert, Timer } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, List, ShieldAlert, Timer, Wrench } from 'lucide-react'
 
 interface OpenTicket {
   id: string
@@ -29,6 +29,15 @@ interface Props {
   byArea: { name: string; count: number }[]
   byMonth: { month: string; total: number }[]
   openTickets: OpenTicket[]
+  mantByMonth: MantMonth[]
+}
+
+interface MantMonth {
+  month: string
+  solicitados: number
+  aceptados: number
+  rechazados: number
+  terminados: number
 }
 
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -40,7 +49,7 @@ const RIESGO_BAR: Record<NivelRiesgo, string> = {
   critico: 'bg-red-600',
 }
 
-export function AdminSeguridadDashboard({ summary, byCategory, byArea, byMonth, openTickets }: Props) {
+export function AdminSeguridadDashboard({ summary, byCategory, byArea, byMonth, openTickets, mantByMonth }: Props) {
   const abiertos = summary.pendiente + summary.en_revision + summary.en_proceso
   const riesgoTotal = Math.max(summary.bajo + summary.medio + summary.alto + summary.critico, 1)
 
@@ -82,6 +91,8 @@ export function AdminSeguridadDashboard({ summary, byCategory, byArea, byMonth, 
         <KpiCard label="En atención" value={summary.en_proceso} icon={<Clock className="h-3.5 w-3.5 text-blue-500" />} />
         <KpiCard label="Cancelados" value={summary.cancelado} icon={<List className="h-3.5 w-3.5 text-zinc-400" />} />
       </div>
+
+      <MantChart data={mantByMonth} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
@@ -144,6 +155,95 @@ export function AdminSeguridadDashboard({ summary, byCategory, byArea, byMonth, 
           ))}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+// ─── Reportes pasados a Mantenimiento ────────────────────
+
+const MANT_SERIES = [
+  { key: 'aceptados',  label: 'Aceptados',  color: 'bg-indigo-500' },
+  { key: 'rechazados', label: 'Rechazados', color: 'bg-red-400' },
+  { key: 'terminados', label: 'Terminados por Mant.', color: 'bg-green-500' },
+] as const
+
+function MantChart({ data }: { data: MantMonth[] }) {
+  const tot = data.reduce(
+    (a, m) => ({
+      solicitados: a.solicitados + m.solicitados, aceptados: a.aceptados + m.aceptados,
+      rechazados: a.rechazados + m.rechazados, terminados: a.terminados + m.terminados,
+    }),
+    { solicitados: 0, aceptados: 0, rechazados: 0, terminados: 0 },
+  )
+  const max = Math.max(...data.map((m) => m.solicitados), 1)
+  const BAR_H = 120
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-1.5">
+          <Wrench className="h-4 w-4" />
+          Reportes pasados a Mantenimiento
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <MiniStat label="Solicitados" value={tot.solicitados} />
+          <MiniStat label="Aceptados"  value={tot.aceptados}  dot="bg-indigo-500" />
+          <MiniStat label="Rechazados" value={tot.rechazados} dot="bg-red-400" />
+          <MiniStat label="Terminados por Mant." value={tot.terminados} dot="bg-green-500" />
+        </div>
+
+        {data.length === 0 ? (
+          <p className="text-sm text-zinc-400 py-6 text-center">Aún no se han pasado reportes a Mantenimiento.</p>
+        ) : (
+          <div className="space-y-2" role="img"
+            aria-label={`Reportes pasados a Mantenimiento por mes: ${data.map((m) => `${m.month} ${m.solicitados}`).join(', ')}`}>
+            <div className="flex items-end gap-3" style={{ height: BAR_H }}>
+              {data.map((m) => (
+                <div key={m.month} className="flex-1 flex items-end justify-center gap-0.5 min-w-0 h-full"
+                  title={`${m.month}: ${m.solicitados} solicitados, ${m.aceptados} aceptados, ${m.rechazados} rechazados, ${m.terminados} terminados`}>
+                  {MANT_SERIES.map((s) => {
+                    const v = m[s.key]
+                    return (
+                      <div key={s.key} className="flex-1 max-w-4 flex flex-col items-center justify-end h-full">
+                        {v > 0 && <span className="text-[9px] text-zinc-500 tabular-nums">{v}</span>}
+                        <div className={cn('w-full rounded-t', s.color)}
+                          style={{ height: Math.max((v / max) * (BAR_H - 14), v > 0 ? 4 : 0) }} />
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              {data.map((m) => (
+                <span key={m.month} className="flex-1 text-[10px] text-zinc-400 text-center truncate">
+                  {MONTHS[Number(m.month.slice(5, 7)) - 1] ?? m.month}
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-3 pt-1">
+              {MANT_SERIES.map((s) => (
+                <span key={s.key} className="flex items-center gap-1.5 text-xs text-zinc-500">
+                  <span className={cn('h-2 w-2 rounded-sm', s.color)} aria-hidden="true" />{s.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function MiniStat({ label, value, dot }: { label: string; value: number; dot?: string }) {
+  return (
+    <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2">
+      <p className="text-xs text-zinc-500 flex items-center gap-1.5">
+        {dot && <span className={cn('h-2 w-2 rounded-sm', dot)} aria-hidden="true" />}{label}
+      </p>
+      <p className="text-xl font-bold text-zinc-900 dark:text-zinc-50 tabular-nums">{value}</p>
     </div>
   )
 }

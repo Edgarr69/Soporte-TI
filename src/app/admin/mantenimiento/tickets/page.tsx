@@ -27,7 +27,7 @@ export default async function AdminMaintenanceTicketsPage({
     .select(`
       id, folio, type, status, servicio, descripcion,
       department_name_snapshot, area_name_snapshot, encargado_nombre,
-      tecnico_nombre_snapshot, fecha_solicitud, created_at, updated_at,
+      tecnico_nombre_snapshot, fecha_solicitud, created_at, updated_at, seguridad_ticket_id,
       user:profiles!user_id(full_name, email)
     `, { count: 'exact' })
     .order('created_at', { ascending: false })

@@ -23,13 +23,14 @@ export default async function AdminHistorialPage() {
   const SEG_TYPES: AdminNotificationType[] = [
     'seguridad_created', 'seguridad_status_changed', 'seguridad_closed',
     'seguridad_cancelled', 'seguridad_reopened',
+    'seguridad_mant_accepted', 'seguridad_mant_rejected',
   ]
   const SIST_TYPES: AdminNotificationType[] = [
     'ticket_created', 'ticket_status_changed', 'ticket_closed', 'ticket_reopened',
   ]
   function notifModule(n: AdminNotification) {
     if (n.module) return n.module
-    if (MAINT_TYPES.includes(n.type)) return 'mantenimiento'
+    if (MAINT_TYPES.includes(n.type) || n.type === 'seguridad_mant_requested') return 'mantenimiento'
     if (SEG_TYPES.includes(n.type))   return 'seguridad'
     if (SIST_TYPES.includes(n.type))  return 'sistemas'
     return 'global'

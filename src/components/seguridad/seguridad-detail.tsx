@@ -61,6 +61,8 @@ interface Props {
     acciones_correctivas: string | null
     cancel_reason: string | null
     created_at: string
+    mant_request_status?: string | null
+    resolved_by_mantenimiento?: boolean
   }
   statusHistory: SeguridadHistoryEntry[]
   comments: SeguridadCommentRow[]
@@ -244,6 +246,14 @@ export function SeguridadDetail({
               )}
             </CardContent>
           </Card>
+
+          {ticket.mant_request_status === 'aceptada' && ticket.status !== 'terminado' && (
+            <Card className="border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20">
+              <CardContent className="py-3 text-sm text-indigo-800 dark:text-indigo-300">
+                Tu reporte fue turnado a Mantenimiento para la reparación. Se cerrará cuando terminen los trabajos.
+              </CardContent>
+            </Card>
+          )}
 
           {ticket.acciones_correctivas && (
             <Card className="border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-950/20">

@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LinkButton } from '@/components/ui/link-button'
 import { HistorialTimeline } from '@/components/shared/historial-timeline'
 import { ChatThread } from '@/components/shared/chat-thread'
+import { MantSupportCard, type MantSupportInfo } from '@/components/seguridad/mant-support-card'
 import {
   EvidenciasGrid,
   type SeguridadCommentRow, type SeguridadEvidenciaRow, type SeguridadHistoryEntry,
@@ -55,10 +56,11 @@ interface Props {
   currentUserId: string
   currentUserName: string
   isReopened?: boolean
+  mantSupport: MantSupportInfo
 }
 
 export function AdminSeguridadDetail({
-  ticket, statusHistory, comments, evidencias, currentUserId, currentUserName, isReopened = false,
+  ticket, statusHistory, comments, evidencias, currentUserId, currentUserName, isReopened = false, mantSupport,
 }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -115,6 +117,11 @@ export function AdminSeguridadDetail({
 
   const next = SEGURIDAD_TRANSITIONS[ticket.status] ?? []
   const isClosed = ticket.status === 'terminado' || ticket.status === 'cancelado'
+  // Con apoyo pendiente o aceptado, el cierre lo decide Mantenimiento
+  const lockedByMant = mantSupport.status === 'pendiente' || mantSupport.status === 'aceptada'
+  const lockTitle = mantSupport.status === 'pendiente'
+    ? 'Hay una solicitud pendiente con Mantenimiento'
+    : 'Mantenimiento está atendiendo este reporte'
   const atencionDirty = acciones.trim() !== (ticket.acciones_correctivas ?? '').trim() || riesgo !== ticket.nivel_riesgo
 
   async function transition(to: SeguridadStatus, opts?: Parameters<typeof changeSeguridadStatus>[2]) {
@@ -233,15 +240,16 @@ export function AdminSeguridadDetail({
             )}
             {next.includes('terminado') && (
               <Button className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold px-5"
-                onClick={markAttended} disabled={transitioning}
-                title={!acciones.trim() ? 'Registra las acciones correctivas primero' : undefined}>
+                onClick={markAttended} disabled={transitioning || lockedByMant}
+                title={lockedByMant ? lockTitle : !acciones.trim() ? 'Registra las acciones correctivas primero' : undefined}>
                 {transitioning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
                 Marcar atendido
               </Button>
             )}
             {next.includes('cancelado') && (
               <Button variant="outline" className="w-full sm:w-auto border-red-400 text-red-600 hover:bg-red-600 hover:text-white font-semibold px-5"
-                onClick={() => setShowCancel(true)} disabled={transitioning}>
+                onClick={() => setShowCancel(true)} disabled={transitioning || lockedByMant}
+                title={lockedByMant ? lockTitle : undefined}>
                 <X className="h-4 w-4 mr-2" />
                 Cancelar
               </Button>
@@ -302,6 +310,13 @@ export function AdminSeguridadDetail({
               </div>
             </CardContent>
           </Card>
+
+          <MantSupportCard
+            ticketId={ticket.id}
+            ticketStatus={ticket.status}
+            defaultServicio={ticket.category_name_snapshot ?? ''}
+            info={mantSupport}
+          />
 
           {/* Atención */}
           <Card>
