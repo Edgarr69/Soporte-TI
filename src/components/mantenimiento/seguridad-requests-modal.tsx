@@ -70,10 +70,13 @@ export function SeguridadRequestsModal({ requests, role }: { requests: PendingMa
     if (accept && 'maintenanceTicketId' in r && r.maintenanceTicketId) {
       toast.success(`Solicitud ${r.folio} creada a partir del reporte ${req.folio}`)
       setOpen(false)
+      // Solo navegar: un router.refresh() inmediato cancelaría el push. La
+      // acción ya revalidó el layout, así que la navegación trae la lista
+      // de pendientes actualizada
       router.push(`/admin/mantenimiento/tickets/${r.maintenanceTicketId}`)
-    } else {
-      toast.success('Solicitud rechazada; Seguridad e Higiene fue notificado')
+      return
     }
+    toast.success('Solicitud rechazada; Seguridad e Higiene fue notificado')
     router.refresh()
   }
 

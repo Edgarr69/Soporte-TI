@@ -9,6 +9,13 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatDate(date: string | Date | null) {
   if (!date) return '—'
+  // Fechas sin hora ('2026-11-23', columnas date) se interpretan como
+  // medianoche UTC con new Date(); en México eso muestra el día anterior.
+  // Construirlas como fecha local.
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [y, m, d] = date.split('-').map(Number)
+    return format(new Date(y, m - 1, d), 'dd MMM yyyy', { locale: es })
+  }
   return format(new Date(date), 'dd MMM yyyy', { locale: es })
 }
 
