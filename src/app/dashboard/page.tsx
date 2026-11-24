@@ -11,7 +11,8 @@ export default async function DashboardPage() {
   if (!user) redirect('/login')
 
   if (!profile?.first_login_completed) redirect('/completar-perfil')
-  if (profile.role !== 'usuario') redirect(homePathForRole(profile.role as Role))
+  // super_admin también puede usar la vista de usuario (menú "Usuario" del sidebar)
+  if (profile.role !== 'usuario' && profile.role !== 'super_admin') redirect(homePathForRole(profile.role as Role))
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 pb-20 lg:pb-10">
