@@ -193,3 +193,35 @@ export const getCachedSeguridadStats = unstable_cache(
   ['admin-seguridad-stats'],
   { revalidate: 300, tags: ['admin-seguridad-tickets'] },
 )
+
+/**
+ * Pendientes abiertos de Sistemas y Mantenimiento para el panel general
+ * del super_admin (los de Seguridad ya vienen en getCachedSeguridadStats).
+ */
+export const getCachedGeneralOpenItems = unstable_cache(
+  async () => {
+    const admin = createAdminClient()
+    const [sistemasRes, mantRes] = await Promise.all([
+      admin
+        .from('tickets')
+        .select('id, folio, status, priority, created_at, ticket_categories(name), user:profiles(full_name)')
+        .in('status', ['abierto', 'en_proceso', 'en_espera', 'reabierto'])
+        .order('created_at', { ascending: false })
+        .limit(5),
+      admin
+        .from('maintenance_tickets')
+        .select('id, folio, status, type, servicio, area_name_snapshot, created_at')
+        .in('status', ['pendiente', 'en_revision', 'asignado', 'en_proceso'])
+        .order('created_at', { ascending: false })
+        .limit(5),
+    ])
+    if (sistemasRes.error) console.error('[getCachedGeneralOpenItems] tickets:', sistemasRes.error.message)
+    if (mantRes.error)     console.error('[getCachedGeneralOpenItems] maintenance_tickets:', mantRes.error.message)
+    return {
+      sistemas:      sistemasRes.data ?? [],
+      mantenimiento: mantRes.data ?? [],
+    }
+  },
+  ['admin-general-open-items'],
+  { revalidate: 120, tags: ['admin-sistemas-tickets', 'admin-mantenimiento-tickets'] },
+)
