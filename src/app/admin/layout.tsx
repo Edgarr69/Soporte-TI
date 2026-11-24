@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         role={role}
         adminUnreadCount={adminUnread}
       />
-      <div className="sm:ml-[4.5rem] flex flex-col h-dvh overflow-hidden">
+      <div className="sidebar-offset min-w-0 flex flex-col h-dvh overflow-hidden">
         <TopBar
           unreadCount={adminUnread}
           userId={user.id}

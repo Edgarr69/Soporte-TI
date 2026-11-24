@@ -117,6 +117,19 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Contenido junto al sidebar: en escritorio el margen sigue el ancho del
+   sidebar (4.5rem cerrado / 16rem abierto, lo fija AppSidebar en --sidebar-w).
+   En móvil el sidebar es overlay y no desplaza nada. */
+@media (min-width: 40rem) {
+  .sidebar-offset {
+    margin-left: var(--sidebar-w, 4.5rem);
+    transition: margin-left 500ms ease-in-out;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-offset { transition: none; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

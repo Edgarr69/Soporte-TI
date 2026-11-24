@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -13,6 +13,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ThemeToggleSlide } from '@/components/shared/theme-toggle-slide'
 import { createClient } from '@/lib/supabase/client'
 import { initials, cn } from '@/lib/utils'
+import {
+  getSidebarOpen, getSidebarOpenServer, setSidebarOpen, subscribeSidebar, toggleSidebar,
+} from '@/lib/sidebar-store'
 import { toast } from 'sonner'
 import type { Role, Profile } from '@/lib/types'
 
@@ -128,9 +131,9 @@ interface Props {
 }
 
 export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
-  const [isOpen, setIsOpen] = useState(false)
-  const sidebarRef          = useRef<HTMLElement>(null)
-  const pathname            = usePathname()
+  const isOpen              = useSyncExternalStore(subscribeSidebar, getSidebarOpen, getSidebarOpenServer)
+  const setIsOpen           = setSidebarOpen
+  const pathname           = usePathname()
   const router              = useRouter()
   const supabase            = createClient()
   const items               = itemsForRole(role)
@@ -191,9 +194,9 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault()
-        setIsOpen((v) => !v)
+        toggleSidebar()
       }
     }
     window.addEventListener('keydown', handler)
@@ -201,23 +204,14 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
   }, [])
 
   useEffect(() => {
-    const handler = () => setIsOpen((v) => !v)
-    window.addEventListener('sidebar:toggle', handler)
-    return () => window.removeEventListener('sidebar:toggle', handler)
+    window.addEventListener('sidebar:toggle', toggleSidebar)
+    return () => window.removeEventListener('sidebar:toggle', toggleSidebar)
   }, [])
 
-  // Cerrar al hacer click fuera del sidebar (escritorio; en móvil lo cubre el backdrop)
+  // En escritorio el sidebar es fijo y empuja el contenido: los layouts usan
+  // la clase .sidebar-offset, cuyo margen sale de esta variable CSS.
   useEffect(() => {
-    if (!isOpen) return
-    const handler = (e: PointerEvent) => {
-      const target = e.target as Element | null
-      if (!target) return
-      if (sidebarRef.current?.contains(target)) return
-      if (target.closest('[data-sidebar-toggle]')) return
-      setIsOpen(false)
-    }
-    document.addEventListener('pointerdown', handler)
-    return () => document.removeEventListener('pointerdown', handler)
+    document.documentElement.style.setProperty('--sidebar-w', isOpen ? '16rem' : '4.5rem')
   }, [isOpen])
 
   async function handleLogout() {
@@ -238,7 +232,6 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
         />
       )}
       <nav
-        ref={sidebarRef as React.Ref<HTMLElement>}
         aria-label="Navegación principal"
         style={{
           width: isOpen ? '16rem' : '4.5rem',
@@ -277,7 +270,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
           <button
             title={isOpen ? 'Cerrar' : 'Abrir'}
             className="p-1 rounded-full flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            onClick={() => setIsOpen((v) => !v)}
+            onClick={toggleSidebar}
             aria-label={isOpen ? 'Cerrar navegación' : 'Abrir navegación'}
             aria-expanded={isOpen}
             aria-controls="sidebar-nav"

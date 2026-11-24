@@ -18,7 +18,7 @@ export default async function TecnicoLayout({ children }: { children: React.Reac
         profile={profile as unknown as Profile}
         role={profile.role as Role}
       />
-      <div className="sm:ml-[4.5rem] flex flex-col min-h-screen">
+      <div className="sidebar-offset min-w-0 flex flex-col min-h-screen">
         <TopBar
           unreadCount={unreadCount ?? 0}
           userId={user.id}
