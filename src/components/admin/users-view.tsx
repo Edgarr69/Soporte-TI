@@ -11,9 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LinkButton } from '@/components/ui/link-button'
 import { ROLE_LABELS, type Role } from '@/lib/types'
 import { cn, formatDate } from '@/lib/utils'
-import { createUser, updateUserRole } from '@/actions/users'
+import { createUser, updateUserRole, updateUserPassword } from '@/actions/users'
 import { toast } from 'sonner'
-import { UserPlus, Shield } from 'lucide-react'
+import { UserPlus, Shield, KeyRound } from 'lucide-react'
 
 interface UserRow {
   id: string
@@ -135,6 +135,9 @@ function UserRow({
   const [editRole,    setEditRole]    = useState(false)
   const [displayRole, setDisplayRole] = useState(user.role as Role)
   const [saving,      setSaving]      = useState(false)
+  const [editPass,    setEditPass]    = useState(false)
+  const [newPass,     setNewPass]     = useState('')
+  const [savingPass,  setSavingPass]  = useState(false)
 
   // admin_mantenimiento puede alternar entre usuario ↔ tecnico_mantenimiento
   const roleOptions: Role[] = isSuperAdmin
@@ -156,6 +159,17 @@ function UserRow({
       setDisplayRole(newRole)
       setEditRole(false)
     }
+  }
+
+  async function savePassword() {
+    if (newPass.length < 6) { toast.error('La contraseña debe tener al menos 6 caracteres'); return }
+    setSavingPass(true)
+    const r = await updateUserPassword(user.id, newPass)
+    setSavingPass(false)
+    if (r?.error) { toast.error(r.error); return }
+    toast.success('Contraseña actualizada.')
+    setNewPass('')
+    setEditPass(false)
   }
 
   return (
@@ -181,6 +195,8 @@ function UserRow({
             </p>
           </div>
 
+          {(canEditRole || isSuperAdmin) && (
+          <div className="flex flex-col items-end gap-2">
           {canEditRole && (
             <div className="flex items-center gap-2 flex-wrap">
               {editRole ? (
@@ -209,6 +225,37 @@ function UserRow({
                 </Button>
               )}
             </div>
+          )}
+          {isSuperAdmin && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {editPass ? (
+                <>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Nueva contraseña"
+                    className="h-7 text-xs w-52"
+                    value={newPass}
+                    onChange={(e) => setNewPass(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') savePassword() }}
+                    disabled={savingPass}
+                  />
+                  <Button size="sm" className="h-7 text-xs" onClick={savePassword} disabled={savingPass || !newPass}>
+                    {savingPass ? '…' : 'Guardar'}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setEditPass(false); setNewPass('') }} disabled={savingPass}>
+                    Cancelar
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setEditPass(true)}>
+                  <KeyRound className="h-3 w-3" />
+                  Cambiar contraseña
+                </Button>
+              )}
+            </div>
+          )}
+          </div>
           )}
         </div>
       </CardContent>

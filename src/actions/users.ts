@@ -209,3 +209,29 @@ export async function deleteUser(targetUserId: string) {
   revalidateTag('technicians', {})
   return { success: true }
 }
+
+// ─── Cambiar contraseña de un usuario (solo super_admin) ──
+
+export async function updateUserPassword(targetUserId: string, newPassword: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: adminProfile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).single()
+  if (adminProfile?.role !== 'super_admin')
+    return { error: 'Sin permiso para cambiar contraseñas' }
+
+  if (typeof newPassword !== 'string' || newPassword.length < 6)
+    return { error: 'La contraseña debe tener al menos 6 caracteres' }
+
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { error: 'Configuración de servidor incompleta' }
+
+  const adminSupabase = createAdminClient()
+  const { error } = await adminSupabase.auth.admin.updateUserById(targetUserId, {
+    password: newPassword,
+  })
+  if (error) return { error: error.message }
+
+  return { success: true }
+}
