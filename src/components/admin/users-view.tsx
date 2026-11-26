@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LinkButton } from '@/components/ui/link-button'
 import { ROLE_LABELS, type Role } from '@/lib/types'
 import { cn, formatDate, isOtroDepartment, departmentLabel } from '@/lib/utils'
-import { createUser, updateUserRole, updateUserPassword } from '@/actions/users'
+import { createUser, updateUserRole, updateUserPassword, deleteUser } from '@/actions/users'
+import { ConfirmDeleteButton } from '@/components/shared/confirm-delete-button'
 import { toast } from 'sonner'
 import { UserPlus, Shield, KeyRound } from 'lucide-react'
 
@@ -133,6 +134,7 @@ function UserRow({
   isOwnRow:     boolean
   onRoleChange: (userId: string, newRole: Role) => Promise<boolean>
 }) {
+  const router = useRouter()
   const [editRole,    setEditRole]    = useState(false)
   const [displayRole, setDisplayRole] = useState(user.role as Role)
   const [saving,      setSaving]      = useState(false)
@@ -256,6 +258,19 @@ function UserRow({
               )}
             </div>
           )}
+          {isSuperAdmin && !isOwnRow && (
+            <ConfirmDeleteButton
+              label="Eliminar usuario"
+              confirmText={`¿Eliminar a ${user.full_name ?? user.email}? No se puede deshacer.`}
+              onConfirm={async () => {
+                const r = await deleteUser(user.id)
+                if (r?.error) { toast.error(r.error); return false }
+                toast.success('Usuario eliminado.')
+                router.refresh()
+                return true
+              }}
+            />
+          )}
           </div>
           )}
         </div>
@@ -319,11 +334,15 @@ function CreateUserForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="email">Correo *</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={submitting} />
+              {/* autoComplete off/new-password: sin esto el navegador lo toma por un
+                  login y rellena el correo y la contraseña del admin con sesión */}
+              <Input id="email" name="new-user-email" type="email" autoComplete="off" data-1p-ignore data-lpignore="true"
+                value={email} onChange={(e) => setEmail(e.target.value)} required disabled={submitting} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Contraseña inicial *</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={submitting} />
+              <Input id="password" name="new-user-password" type="password" autoComplete="new-password" data-1p-ignore data-lpignore="true"
+                value={password} onChange={(e) => setPassword(e.target.value)} required disabled={submitting} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="fullName">Nombre completo</Label>

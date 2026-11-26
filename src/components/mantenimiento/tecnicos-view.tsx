@@ -191,7 +191,13 @@ function CreateTecnicoForm({
               <Label htmlFor="tec-email">Correo electrónico *</Label>
               <Input
                 id="tec-email"
+                name="new-user-email"
                 type="email"
+                // Evita que el navegador lo tome por un login y meta las
+                // credenciales guardadas del admin que tiene la sesión
+                autoComplete="off"
+                data-1p-ignore
+                data-lpignore="true"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -202,7 +208,11 @@ function CreateTecnicoForm({
               <Label htmlFor="tec-pass">Contraseña inicial *</Label>
               <Input
                 id="tec-pass"
+                name="new-user-password"
                 type="password"
+                autoComplete="new-password"
+                data-1p-ignore
+                data-lpignore="true"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

@@ -65,7 +65,8 @@ export function LoginModal({ isOpen, onClose }: Props) {
 
   const isInvalidEmail = useMemo(() => {
     if (email === '') return false
-    return !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(email)
+    // Terminación de 2+ letras: {2,4} rechazaba dominios como .local (cuentas @soporte.local)
+    return !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email.trim())
   }, [email])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -74,7 +75,7 @@ export function LoginModal({ isOpen, onClose }: Props) {
     if (isInvalidEmail) { toast.error('Por favor, ingresa un correo electrónico válido'); return }
 
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
     if (error) {
       toast.error('Credenciales incorrectas. Verifica tu correo y contraseña.')
       setLoading(false)

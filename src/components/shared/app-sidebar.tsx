@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Monitor, Wrench, Settings, Users,
   BarChart3, ShieldCheck, History, Ticket, Bell, LogOut, HardHat,
-  ShieldAlert, ClipboardList, ChevronDown,
+  ShieldAlert, ClipboardList, ChevronDown, Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -16,7 +17,6 @@ import { initials, cn } from '@/lib/utils'
 import {
   getSidebarOpen, getSidebarOpenServer, setSidebarOpen, subscribeSidebar, toggleSidebar,
 } from '@/lib/sidebar-store'
-import { toast } from 'sonner'
 import type { Role, Profile } from '@/lib/types'
 
 // ─── Nav items por rol ────────────────────────────────────
@@ -134,7 +134,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
   const isOpen              = useSyncExternalStore(subscribeSidebar, getSidebarOpen, getSidebarOpenServer)
   const setIsOpen           = setSidebarOpen
   const pathname           = usePathname()
-  const router              = useRouter()
+  const [loggingOut, setLoggingOut] = useState(false)
   const supabase            = createClient()
   const items               = itemsForRole(role)
   // Grupos abiertos/cerrados manualmente; si el usuario no lo ha tocado,
@@ -215,15 +215,37 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
   }, [isOpen])
 
   async function handleLogout() {
-    setIsOpen(false)
-    await supabase.auth.signOut()
-    toast.success('Sesión cerrada.')
-    router.push('/')
-    router.refresh()
+    if (loggingOut) return
+    // Primero se bloquea la pantalla (capa borrosa encima de todo) y después
+    // se cierra la sesión: así no se puede seguir usando la página vieja
+    // durante los milisegundos que tarda signOut.
+    setLoggingOut(true)
+    try {
+      await supabase.auth.signOut()
+    } catch (e) {
+      console.error('[logout]', e)
+    }
+    // Navegación completa (no router.push): descarta el estado y la caché
+    // del cliente, así no queda nada de la sesión anterior en pantalla.
+    window.location.replace('/')
   }
 
   return (
     <>
+      {loggingOut && typeof document !== 'undefined' && createPortal(
+        <div
+          role="alert"
+          aria-live="assertive"
+          aria-busy="true"
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-white/40 dark:bg-black/50 backdrop-blur-md animate-in fade-in duration-200 cursor-wait"
+        >
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/90 dark:bg-zinc-900/90 px-8 py-6 shadow-xl ring-1 ring-black/5 dark:ring-white/10 animate-in zoom-in-95 duration-200">
+            <Loader2 className="h-7 w-7 animate-spin text-zinc-700 dark:text-zinc-200" />
+            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Cerrando sesión…</p>
+          </div>
+        </div>,
+        document.body,
+      )}
       {isOpen && (
         <button
           aria-label="Cerrar navegación"
@@ -353,6 +375,7 @@ export function AppSidebar({ profile, role, adminUnreadCount = 0 }: Props) {
             variant="ghost"
             size={isOpen ? 'sm' : 'icon-sm'}
             onClick={handleLogout}
+            disabled={loggingOut}
             aria-label={isOpen ? undefined : 'Cerrar sesión'}
             className={cn(
               'text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30',

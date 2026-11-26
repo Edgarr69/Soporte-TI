@@ -214,8 +214,29 @@ export async function deleteUser(targetUserId: string) {
   if (!deletableRolesByAdmin[adminProfile.role]?.includes(targetProfile.role as Role))
     return { error: 'Sin permiso para eliminar usuarios con ese rol' }
 
+  // Con tickets propios no se borra: se perdería quién los levantó y las
+  // llaves foráneas lo impedirían de todos modos (error genérico de Auth).
+  // Se piden borrar primero, desde el detalle de cada ticket.
+  const counts = await Promise.all(
+    (['tickets', 'maintenance_tickets', 'seguridad_tickets'] as const).map((t) =>
+      adminSupabase.from(t).select('id', { count: 'exact', head: true }).eq('user_id', targetUserId),
+    ),
+  )
+  const [nSis, nMt, nSeg] = counts.map((c) => c.count ?? 0)
+  if (nSis + nMt + nSeg > 0) {
+    const parts = [
+      nSis && `${nSis} de sistemas`, nMt && `${nMt} de mantenimiento`, nSeg && `${nSeg} de seguridad`,
+    ].filter(Boolean).join(', ')
+    return { error: `Este usuario tiene tickets (${parts}). Elimínalos primero desde su detalle.` }
+  }
+
   const { error } = await adminSupabase.auth.admin.deleteUser(targetUserId)
-  if (error) return { error: error.message }
+  if (error) {
+    console.error('[deleteUser]', error.message)
+    return { error: error.message.includes('Database error')
+      ? 'No se pudo eliminar: el usuario tiene comentarios o historial en tickets de otras personas.'
+      : error.message }
+  }
 
   revalidatePath('/admin/mantenimiento/tecnicos')
   revalidatePath('/admin/usuarios')

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { redirect, notFound } from 'next/navigation'
 import { AdminTicketDetail } from '@/components/admin/admin-ticket-detail'
 import { getAuthedProfile } from '@/lib/auth'
+import { DeleteTicketButton } from '@/components/shared/delete-ticket-button'
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -48,12 +49,19 @@ export default async function AdminTicketDetailPage({ params }: Props) {
   }
 
   return (
-    <AdminTicketDetail
-      ticket={normalizedTicket as Record<string, unknown>}
-      history={history ?? []}
-      comments={comments ?? []}
-      userId={user.id}
-      adminName={profile?.full_name ?? user.email ?? 'Admin'}
-    />
+    <div className="space-y-3">
+      {profile?.role === 'super_admin' && (
+        <div className="flex justify-end">
+          <DeleteTicketButton module="sistemas" ticketId={ticket.id as string} folio={ticket.folio as string} redirectTo="/admin/sistemas/tickets" />
+        </div>
+      )}
+      <AdminTicketDetail
+        ticket={normalizedTicket as Record<string, unknown>}
+        history={history ?? []}
+        comments={comments ?? []}
+        userId={user.id}
+        adminName={profile?.full_name ?? user.email ?? 'Admin'}
+      />
+    </div>
   )
 }

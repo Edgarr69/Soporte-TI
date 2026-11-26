@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import { AdminMaintenanceDetail } from '@/components/mantenimiento/admin-maintenance-detail'
 import { getTechnicians } from '@/lib/catalog-cache'
 import { getAuthedProfile } from '@/lib/auth'
+import { DeleteTicketButton } from '@/components/shared/delete-ticket-button'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export default async function AdminMaintenanceTicketDetailPage({
@@ -100,16 +101,23 @@ export default async function AdminMaintenanceTicketDetailPage({
   }))
 
   return (
-    <AdminMaintenanceDetail
-      ticket={ticket as unknown as Parameters<typeof AdminMaintenanceDetail>[0]['ticket']}
-      statusHistory={history}
-      comments={normalizedComments as unknown as Parameters<typeof AdminMaintenanceDetail>[0]['comments']}
-      evidencias={evidenciasWithUrl}
-      technicians={technicians as { id: string; full_name: string | null; email: string }[]}
-      currentUserId={user.id}
-      currentUserName={profile?.full_name ?? user.email ?? ''}
-      isReopened={isReopened}
-      origenSeguridad={origenSeguridad}
-    />
+    <div className="space-y-3">
+      {profile?.role === 'super_admin' && (
+        <div className="flex justify-end">
+          <DeleteTicketButton module="mantenimiento" ticketId={ticket.id as string} folio={ticket.folio as string} redirectTo="/admin/mantenimiento/tickets" />
+        </div>
+      )}
+      <AdminMaintenanceDetail
+        ticket={ticket as unknown as Parameters<typeof AdminMaintenanceDetail>[0]['ticket']}
+        statusHistory={history}
+        comments={normalizedComments as unknown as Parameters<typeof AdminMaintenanceDetail>[0]['comments']}
+        evidencias={evidenciasWithUrl}
+        technicians={technicians as { id: string; full_name: string | null; email: string }[]}
+        currentUserId={user.id}
+        currentUserName={profile?.full_name ?? user.email ?? ''}
+        isReopened={isReopened}
+        origenSeguridad={origenSeguridad}
+      />
+    </div>
   )
 }
