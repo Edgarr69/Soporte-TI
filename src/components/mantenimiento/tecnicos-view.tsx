@@ -221,7 +221,7 @@ function CreateTecnicoForm({
             </div>
           </div>
           <p className="text-xs text-zinc-400">
-            El técnico podrá cambiar su contraseña al iniciar sesión por primera vez.
+            Comparte esta contraseña con el técnico. Si necesita cambiarla, la cambia el super administrador desde Usuarios.
           </p>
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={submitting || !email.trim() || !password.trim()}>
