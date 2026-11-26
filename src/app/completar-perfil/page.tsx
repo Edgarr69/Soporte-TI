@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { CompleteProfileForm } from '@/components/auth/complete-profile-form'
 import { Headphones } from 'lucide-react'
 import { homePathForRole, type Role } from '@/lib/types'
+import { sortDepartments } from '@/lib/utils'
 import { getAuthedProfile } from '@/lib/auth'
 
 export default async function CompleteProfilePage() {
@@ -43,12 +44,13 @@ export default async function CompleteProfilePage() {
         </div>
 
         <CompleteProfileForm
-          departments={departments ?? []}
+          departments={sortDepartments(departments ?? [])}
           defaultManager={defaultManager}
           userEmail={user.email ?? ''}
           prefilled={{
             full_name:        profile?.full_name,
             department_id:    profile?.department_id,
+            department_other: profile?.department_other,
             encargado_nombre: profile?.encargado_nombre,
           }}
         />

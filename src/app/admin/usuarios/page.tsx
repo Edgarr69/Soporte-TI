@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { UsersView } from '@/components/admin/users-view'
+import { sortDepartments } from '@/lib/utils'
 import { getAuthedProfile } from '@/lib/auth'
 
 const PAGE_SIZE = 50
@@ -34,7 +35,7 @@ export default async function AdminUsuariosPage({
   const [{ data: users, count }, { data: departments }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, email, full_name, role, first_login_completed, created_at, department:departments(name)', { count: 'exact' })
+      .select('id, email, full_name, role, first_login_completed, created_at, department_other, department:departments(name)', { count: 'exact' })
       .in('role', rolesToShow)
       .order('created_at', { ascending: false })
       .range(from, to),
@@ -44,7 +45,7 @@ export default async function AdminUsuariosPage({
   return (
     <UsersView
       users={(users ?? []) as unknown as Parameters<typeof UsersView>[0]['users']}
-      departments={departments ?? []}
+      departments={sortDepartments(departments ?? [])}
       currentRole={profile.role}
       currentUserId={user.id}
       page={page}

@@ -88,6 +88,7 @@ export interface Profile {
   email: string
   full_name: string | null
   department_id: string | null
+  department_other?: string | null   // texto libre cuando el departamento es "Otro"
   role: Role
   first_login_completed: boolean
   created_at: string
@@ -380,6 +381,7 @@ export interface ProfileExtended {
   email: string
   full_name: string | null
   department_id: string | null
+  department_other?: string | null   // texto libre cuando el departamento es "Otro"
   role: Role
   first_login_completed: boolean
   encargado_nombre: string | null

@@ -7,6 +7,7 @@ import { LinkButton } from '@/components/ui/link-button'
 import { ChevronLeft } from 'lucide-react'
 import type { MaintenanceType } from '@/lib/types'
 import { getAuthedProfile } from '@/lib/auth'
+import { departmentLabel } from '@/lib/utils'
 
 export default async function NuevoMantenimientoPage({
   searchParams,
@@ -53,7 +54,7 @@ export default async function NuevoMantenimientoPage({
           tipo={tipo}
           profile={{
             department_id:   dept?.id ?? null,
-            department_name: dept?.name ?? null,
+            department_name: departmentLabel(dept?.name, profile?.department_other),
             area_id:         null,
             area_name:       null,
             encargado_nombre: profile?.encargado_nombre ?? null,

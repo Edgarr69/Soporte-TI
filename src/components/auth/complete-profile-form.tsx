@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, User } from 'lucide-react'
+import { isOtroDepartment } from '@/lib/utils'
 import { toast } from 'sonner'
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
   prefilled: {                    // datos precargados por admin (pueden ser vacíos)
     full_name?: string | null
     department_id?: string | null
+    department_other?: string | null
     encargado_nombre?: string | null
   }
 }
@@ -29,12 +31,15 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
   const [fullName,  setFullName]  = useState(prefilled.full_name ?? '')
   const [deptId,    setDeptId]    = useState(prefilled.department_id ?? '')
   const [encargado, setEncargado] = useState(prefilled.encargado_nombre ?? defaultManager)
+  const [deptOther, setDeptOther] = useState(prefilled.department_other ?? '')
   const [loading,   setLoading]   = useState(false)
 
+  const isOtro = isOtroDepartment(departments.find((d) => d.id === deptId)?.name)
+  const missingOther = isOtro && !deptOther.trim()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!fullName.trim() || !deptId || !encargado.trim()) {
+    if (!fullName.trim() || !deptId || !encargado.trim() || missingOther) {
       toast.error('Completa todos los campos requeridos.')
       return
     }
@@ -48,6 +53,7 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
       .update({
         full_name:            fullName.trim(),
         department_id:        deptId,
+        department_other:     isOtro ? deptOther.trim().slice(0, 100) : null,
         encargado_nombre:     encargado.trim(),
         first_login_completed: true,
       })
@@ -106,6 +112,18 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
                 ))}
               </SelectContent>
             </Select>
+            {isOtro && (
+              <Input
+                id="department-other"
+                aria-label="¿Cuál departamento?"
+                placeholder="Escribe tu departamento"
+                maxLength={100}
+                value={deptOther}
+                onChange={(e) => setDeptOther(e.target.value)}
+                required disabled={loading}
+                autoFocus
+              />
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -125,7 +143,7 @@ export function CompleteProfileForm({ departments, defaultManager, userEmail, pr
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || !fullName.trim() || !deptId || !encargado.trim()}
+            disabled={loading || !fullName.trim() || !deptId || !encargado.trim() || missingOther}
           >
             {loading && <Loader2 aria-hidden="true" className="h-4 w-4 mr-2 animate-spin" />}
             {loading ? 'Guardando...' : 'Continuar al sistema'}

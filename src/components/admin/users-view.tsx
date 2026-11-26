@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { LinkButton } from '@/components/ui/link-button'
 import { ROLE_LABELS, type Role } from '@/lib/types'
-import { cn, formatDate } from '@/lib/utils'
+import { cn, formatDate, isOtroDepartment, departmentLabel } from '@/lib/utils'
 import { createUser, updateUserRole, updateUserPassword } from '@/actions/users'
 import { toast } from 'sonner'
 import { UserPlus, Shield, KeyRound } from 'lucide-react'
@@ -23,6 +23,7 @@ interface UserRow {
   first_login_completed: boolean
   created_at: string
   department: { name: string } | null
+  department_other: string | null
 }
 
 interface Props {
@@ -190,7 +191,7 @@ function UserRow({
             </div>
             <p className="text-xs text-zinc-500 mt-0.5">{user.email}</p>
             <p className="text-xs text-zinc-400">
-              {user.department?.name ?? '—'}
+              {departmentLabel(user.department?.name, user.department_other) ?? '—'}
               {' · '}Creado {formatDate(user.created_at)}
             </p>
           </div>
@@ -283,11 +284,15 @@ function CreateUserForm({
   const [role,       setRole]       = useState<Role>('usuario')
   const [deptId,     setDeptId]     = useState('')
   const [encargado,  setEncargado]  = useState('')
+  const [deptOther,  setDeptOther]  = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  const isOtro = isOtroDepartment(departments.find((d) => d.id === deptId)?.name)
+  const missingOther = isOtro && !deptOther.trim()
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim() || !password.trim()) return
+    if (!email.trim() || !password.trim() || missingOther) return
     setSubmitting(true)
     const r = await createUser({
       email:            email.trim(),
@@ -295,6 +300,7 @@ function CreateUserForm({
       full_name:        fullName || undefined,
       role,
       department_id:    deptId || undefined,
+      department_other: isOtro ? deptOther.trim() : undefined,
       encargado_nombre: encargado || undefined,
     })
     setSubmitting(false)
@@ -355,6 +361,17 @@ function CreateUserForm({
                   {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {isOtro && (
+                <Input
+                  aria-label="¿Cuál departamento?"
+                  placeholder="Escribe el departamento"
+                  maxLength={100}
+                  value={deptOther}
+                  onChange={(e) => setDeptOther(e.target.value)}
+                  required disabled={submitting}
+                  autoFocus
+                />
+              )}
             </div>
             <div className="space-y-1.5 sm:col-span-1">
               <Label htmlFor="new-encargado">Encargado del departamento</Label>
@@ -363,7 +380,7 @@ function CreateUserForm({
           </div>
 
           <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={submitting || !email.trim() || !password.trim()}>
+            <Button type="submit" size="sm" disabled={submitting || !email.trim() || !password.trim() || missingOther}>
               {submitting ? 'Creando…' : 'Crear usuario'}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={submitting}>

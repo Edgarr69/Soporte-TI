@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
+import { sortDepartments } from '@/lib/utils'
 
 function getClient() {
   return createClient(
@@ -38,7 +39,7 @@ export const getCachedDepartments = unstable_cache(
       .from('departments')
       .select('id, name')
       .order('name')
-    return data ?? []
+    return sortDepartments(data ?? [])
   },
   ['departments'],
   { revalidate: 3600, tags: ['departments'] },

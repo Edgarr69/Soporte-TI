@@ -54,3 +54,21 @@ export function initials(name: string | null): string {
     .map((n) => n[0]?.toUpperCase() ?? '')
     .join('')
 }
+
+/** true si el nombre es el departamento "Otro" (que pide texto libre). */
+export function isOtroDepartment(name: string | null | undefined): boolean {
+  return !!name && name.trim().toLowerCase() === 'otro'
+}
+
+/** Ordena departamentos alfabéticamente dejando "Otro" siempre al final. */
+export function sortDepartments<T extends { name: string }>(list: T[]): T[] {
+  return [...list].sort((a, b) =>
+    Number(isOtroDepartment(a.name)) - Number(isOtroDepartment(b.name)) || a.name.localeCompare(b.name, 'es'),
+  )
+}
+
+/** Nombre a mostrar: "Otro (texto)" si el departamento es Otro y hay texto. */
+export function departmentLabel(name: string | null | undefined, other: string | null | undefined): string | null {
+  if (!name) return null
+  return isOtroDepartment(name) && other?.trim() ? `Otro (${other.trim()})` : name
+}

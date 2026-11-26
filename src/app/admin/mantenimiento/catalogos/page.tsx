@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { CatalogsView } from '@/components/mantenimiento/catalogs-view'
+import { sortDepartments } from '@/lib/utils'
 import { getAuthedProfile } from '@/lib/auth'
 
 export default async function CatalogosPage() {
@@ -32,7 +33,7 @@ export default async function CatalogosPage() {
       areas={areas ?? []}
       generalCats={generalCats ?? []}
       maqCats={maqCats ?? []}
-      departments={departments ?? []}
+      departments={sortDepartments(departments ?? [])}
       managers={managers ?? []}
       subcategories={subcategories ?? []}
     />

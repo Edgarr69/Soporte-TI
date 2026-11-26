@@ -7,6 +7,7 @@ import path from 'path'
 import type { NivelRiesgo, SeguridadStatus } from '@/lib/types'
 import { NIVELES_RIESGO, NIVEL_RIESGO_LABELS, SEGURIDAD_TRANSITIONS } from '@/lib/types'
 import { createAdminNotification } from '@/actions/admin-notifications'
+import { departmentLabel } from '@/lib/utils'
 
 const ADMIN_ROLES = ['admin_seguridad', 'super_admin']
 const BUCKET      = 'seguridad-docs'
@@ -71,7 +72,7 @@ export async function createSeguridadReport(formData: FormData) {
   // Los snapshots se leen de la BD, no del cliente
   const [{ data: profile }, { data: category }, { data: area }] = await Promise.all([
     supabase.from('profiles')
-      .select('full_name, email, department_id, department:departments(name)')
+      .select('full_name, email, department_id, department_other, department:departments(name)')
       .eq('id', user.id).single(),
     supabase.from('seguridad_categories').select('name, is_active').eq('id', category_id).single(),
     supabase.from('areas').select('name, is_active').eq('id', area_id).single(),
@@ -80,7 +81,10 @@ export async function createSeguridadReport(formData: FormData) {
   if (!area?.is_active)     return { error: 'Área no válida' }
 
   const dept = profile?.department as unknown as { name: string } | { name: string }[] | null
-  const deptName = Array.isArray(dept) ? (dept[0]?.name ?? null) : (dept?.name ?? null)
+  const deptName = departmentLabel(
+    Array.isArray(dept) ? dept[0]?.name : dept?.name,
+    profile?.department_other,
+  )
 
   const { data: ticket, error: insertErr } = await supabase
     .from('seguridad_tickets')

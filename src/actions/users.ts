@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import type { Role } from '@/lib/types'
 import { createAdminNotification } from '@/actions/admin-notifications'
+import { isOtroDepartment } from '@/lib/utils'
 
 // ─── Crear usuario (solo super_admin o admin_sistemas) ────
 
@@ -14,6 +15,7 @@ export async function createUser(data: {
   full_name?: string
   role: Role
   department_id?: string
+  department_other?: string
   encargado_nombre?: string
 }) {
   const supabase = await createClient()
@@ -61,8 +63,19 @@ export async function createUser(data: {
   if (data.department_id)     profileUpdates.department_id     = data.department_id
   if (data.encargado_nombre)  profileUpdates.encargado_nombre  = data.encargado_nombre.trim()
 
+  // Departamento "Otro": exige el texto libre (se valida contra la BD,
+  // no contra lo que diga el cliente)
+  let deptIsOtro = false
+  if (data.department_id) {
+    const { data: dept } = await adminSupabase
+      .from('departments').select('name').eq('id', data.department_id).single()
+    deptIsOtro = isOtroDepartment(dept?.name)
+  }
+  const deptOther = data.department_other?.trim().slice(0, 100) ?? ''
+  if (deptIsOtro && deptOther) profileUpdates.department_other = deptOther
+
   // If admin pre-loaded all required fields, mark first_login_completed
-  if (data.full_name && data.department_id && data.encargado_nombre) {
+  if (data.full_name && data.department_id && data.encargado_nombre && (!deptIsOtro || deptOther)) {
     profileUpdates.first_login_completed = true
   }
 
