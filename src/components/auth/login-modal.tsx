@@ -77,7 +77,13 @@ export function LoginModal({ isOpen, onClose }: Props) {
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
     if (error) {
-      toast.error('Credenciales incorrectas. Verifica tu correo y contraseña.')
+      // 429 = límite de inicios de sesión de Supabase (30 cada 5 min por IP;
+      // en la oficina todos comparten IP). Reintentar solo alarga el bloqueo.
+      if (error.status === 429 || error.code === 'over_request_rate_limit') {
+        toast.error('Demasiados intentos de inicio de sesión. Espera 5 minutos y vuelve a intentar.')
+      } else {
+        toast.error('Credenciales incorrectas. Verifica tu correo y contraseña.')
+      }
       setLoading(false)
       return
     }
