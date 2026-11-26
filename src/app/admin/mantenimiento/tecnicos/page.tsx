@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { TecnicosView } from '@/components/mantenimiento/tecnicos-view'
-import { getCachedTechnicians } from '@/lib/catalog-cache'
+import { getTechnicians } from '@/lib/catalog-cache'
 import { getAuthedProfile } from '@/lib/auth'
 
 export default async function TecnicosPage() {
@@ -12,7 +12,7 @@ export default async function TecnicosPage() {
   if (!profile || !['admin_mantenimiento', 'super_admin'].includes(profile.role))
     redirect('/dashboard')
 
-  const tecnicos = await getCachedTechnicians()
+  const tecnicos = await getTechnicians()
 
   return (
     <TecnicosView

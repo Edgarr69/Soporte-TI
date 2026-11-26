@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect, notFound } from 'next/navigation'
 import { AdminMaintenanceDetail } from '@/components/mantenimiento/admin-maintenance-detail'
-import { getCachedTechnicians } from '@/lib/catalog-cache'
+import { getTechnicians } from '@/lib/catalog-cache'
 import { getAuthedProfile } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -64,7 +64,7 @@ export default async function AdminMaintenanceTicketDetailPage({
       .eq('ticket_id', id)
       .order('created_at', { ascending: true })
       .limit(100),
-    getCachedTechnicians(),
+    getTechnicians(),
   ])
 
   // El bucket es privado: signed URLs (1 h) generadas aquí, tras validar
