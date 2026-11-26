@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { onBroadcast } from '@/lib/realtime'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Bell, Check, ExternalLink } from 'lucide-react'
@@ -24,25 +25,24 @@ export function NotificationsView({ initialNotifications, userId, role }: Props)
   const [selected, setSelected] = useState<NotifItem | null>(null)
   const [markingAll, setMarkingAll] = useState(false)
 
-  // Tiempo real — misma estrategia que el chat de tickets (canal + postgres_changes).
-  // Replica el filtro por módulo de la página (admin_sistemas/admin_mantenimiento
-  // solo ven lo suyo) ya que `postgres_changes` no soporta esa lógica condicional
+  // Tiempo real por Broadcast (migración 020): el aviso trae { id, module } y la
+  // notificación se lee con la sesión (RLS). Replica el filtro por módulo de la
+  // página (admin_sistemas/admin_mantenimiento solo ven lo suyo)
   useEffect(() => {
-    const channel = supabase
-      .channel(`notifications-page-${userId}`)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'notifications',
-        filter: `user_id=eq.${userId}`,
-      }, (payload) => {
-        const row = payload.new as Notification
-        if (role === 'admin_sistemas'      && row.module !== 'sistemas')      return
-        if (role === 'admin_mantenimiento' && row.module !== 'mantenimiento') return
-        if (role === 'admin_seguridad'     && row.module !== 'seguridad')     return
-        setNotifications((prev) => prev.some((n) => n.id === row.id) ? prev : [row, ...prev])
-      })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
+  return onBroadcast(supabase, `notifications:${userId}`, async (payload) => {
+      const { id } = payload as { id: string }
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('id', id)
+        .single()
+      if (!data) return
+      const row = data as Notification
+      if (role === 'admin_sistemas'      && row.module !== 'sistemas')      return
+      if (role === 'admin_mantenimiento' && row.module !== 'mantenimiento') return
+      if (role === 'admin_seguridad'     && row.module !== 'seguridad')     return
+      setNotifications((prev) => prev.some((n) => n.id === row.id) ? prev : [row, ...prev])
+    })
   }, [userId, role])
 
   async function markAllRead() {

@@ -8,6 +8,7 @@ import {
   addComment,
 } from '@/actions/tickets'
 import { createClient } from '@/lib/supabase/client'
+import { onBroadcast } from '@/lib/realtime'
 import {
   ArrowLeft, Loader2, RotateCcw, Lock, Calendar, Clock, CheckCircle2,
 } from 'lucide-react'
@@ -75,30 +76,23 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
 
   useEffect(() => {
     const supabase = createClient()
-    const channel = supabase
-      .channel(`admin-ticket-comments-${t.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'ticket_comments',
-        filter: `ticket_id=eq.${t.id}`,
-      }, async (payload) => {
-        const row = payload.new as { id: string; author_id: string | null }
-        if (row.author_id === userId) return
-        const { data } = await supabase
-          .from('ticket_comments')
-          .select('id, body, is_internal, created_at, author_id, author:profiles(full_name, email)')
-          .eq('id', row.id)
-          .single()
-        if (!data) return
-        const author = Array.isArray(data.author) ? data.author[0] : data.author
-        setComments((prev) => {
-          if (prev.some((c) => (c as Record<string, unknown>).id === data.id)) return prev
-          return [...prev, { ...data, author } as Record<string, unknown>]
-        })
+    // Aviso por Broadcast (migración 020): solo trae id/author_id/is_internal;
+    // el comentario completo se vuelve a leer abajo con la sesión (RLS)
+    return onBroadcast(supabase, `ticket_comments:${t.id}`, async (payload) => {
+      const row = payload as { id: string; author_id: string | null }
+      if (row.author_id === userId) return
+      const { data } = await supabase
+        .from('ticket_comments')
+        .select('id, body, is_internal, created_at, author_id, author:profiles(full_name, email)')
+        .eq('id', row.id)
+        .single()
+      if (!data) return
+      const author = Array.isArray(data.author) ? data.author[0] : data.author
+      setComments((prev) => {
+        if (prev.some((c) => (c as Record<string, unknown>).id === data.id)) return prev
+        return [...prev, { ...data, author } as Record<string, unknown>]
       })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    })
   }, [t.id, userId])
 
   const allowedStatuses = TICKET_TRANSITIONS[t.status] ?? []

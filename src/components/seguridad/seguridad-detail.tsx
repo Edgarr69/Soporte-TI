@@ -19,6 +19,7 @@ import { formatDateTime, cn } from '@/lib/utils'
 import { ArrowLeft, AlertTriangle, FileText, ShieldCheck } from 'lucide-react'
 import { addSeguridadComment, cancelSeguridadReport } from '@/actions/seguridad'
 import { createClient } from '@/lib/supabase/client'
+import { onBroadcast } from '@/lib/realtime'
 import { toast } from 'sonner'
 
 export interface SeguridadHistoryEntry {
@@ -87,30 +88,23 @@ export function SeguridadDetail({
 
   useEffect(() => {
     const supabase = createClient()
-    const channel = supabase
-      .channel(`seguridad-comments-${ticket.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'seguridad_comments',
-        filter: `ticket_id=eq.${ticket.id}`,
-      }, async (payload) => {
-        const row = payload.new as { id: string; author_id: string | null; is_internal: boolean }
-        if (row.author_id === currentUserId || row.is_internal) return
-        const { data } = await supabase
-          .from('seguridad_comments')
-          .select('id, body, created_at, author_id, author:profiles(full_name, email)')
-          .eq('id', row.id)
-          .single()
-        if (!data) return
-        const author = Array.isArray(data.author) ? data.author[0] : data.author
-        setLocalComments((prev) => {
-          if (prev.some((c) => c.id === data.id)) return prev
-          return [...prev, { ...data, author: author ?? null }]
-        })
+    // Aviso por Broadcast (migración 020): solo trae id/author_id/is_internal;
+    // el comentario completo se vuelve a leer abajo con la sesión (RLS)
+    return onBroadcast(supabase, `seguridad_comments:${ticket.id}`, async (payload) => {
+      const row = payload as { id: string; author_id: string | null; is_internal: boolean }
+      if (row.author_id === currentUserId || row.is_internal) return
+      const { data } = await supabase
+        .from('seguridad_comments')
+        .select('id, body, created_at, author_id, author:profiles(full_name, email)')
+        .eq('id', row.id)
+        .single()
+      if (!data) return
+      const author = Array.isArray(data.author) ? data.author[0] : data.author
+      setLocalComments((prev) => {
+        if (prev.some((c) => c.id === data.id)) return prev
+        return [...prev, { ...data, author: author ?? null }]
       })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    })
   }, [ticket.id, currentUserId])
 
   async function submitComment() {

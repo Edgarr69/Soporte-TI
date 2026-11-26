@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
+import { onBroadcast } from '@/lib/realtime'
 import type { Notification, AdminNotification, Role } from '@/lib/types'
 import { cn, formatLocale } from '@/lib/utils'
 import { NotifDetailModal, toNotifItem, toAdminNotifItem, type NotifItem } from './notif-detail-modal'
@@ -47,46 +48,47 @@ export function NotificationBell({ unreadCount: initialCount, userId, role }: Pr
 
   useEffect(() => { setCount(initialCount) }, [initialCount])
 
-  // Suscripción en tiempo real — misma estrategia que el chat de tickets
-  // (canal + postgres_changes + cleanup en el cleanup del efecto)
+  // Tiempo real por Broadcast (migración 020). El aviso solo trae { id, module };
+  // la notificación completa se lee con la sesión del usuario, así RLS decide
+  // qué puede ver aunque el canal sea público.
   useEffect(() => {
-    const channel = isAdmin
-      ? supabase
-          .channel(`admin-notifications-bell-${userId}`)
-          .on('postgres_changes', {
-            event: 'INSERT', schema: 'public', table: 'admin_notifications',
-          }, async (payload) => {
-            const row = payload.new as AdminNotification
-            // Mismo filtro por módulo que notifications-view.tsx: cada admin
-            // de módulo solo debe ver popups de su propio módulo
-            if (role === 'admin_sistemas'      && row.module !== 'sistemas')      return
-            if (role === 'admin_mantenimiento' && row.module !== 'mantenimiento') return
-            if (role === 'admin_seguridad'     && row.module !== 'seguridad')     return
+    if (isAdmin) {
+      return onBroadcast(supabase, 'admin_notifications', async (payload) => {
+        const { id, module } = payload as { id: string; module: string | null }
+        // Mismo filtro por módulo que notifications-view.tsx: cada admin
+        // de módulo solo debe ver popups de su propio módulo
+        if (role === 'admin_sistemas'      && module !== 'sistemas'      && module !== 'global') return
+        if (role === 'admin_mantenimiento' && module !== 'mantenimiento' && module !== 'global') return
+        if (role === 'admin_seguridad'     && module !== 'seguridad'     && module !== 'global') return
 
-            // El conteo depende del módulo según el rol — recalculamos con la
-            // misma RPC que usa el layout en vez de duplicar esa lógica aquí
-            const { data } = await supabase.rpc('get_admin_unread_count')
-            if (typeof data === 'number') setCount(data)
-            setLoaded(false)
-            pushPopup(toAdminNotifItem(row))
-            router.refresh()
-          })
-          .subscribe()
-      : supabase
-          .channel(`notifications-bell-${userId}`)
-          .on('postgres_changes', {
-            event: 'INSERT', schema: 'public', table: 'notifications',
-            filter: `user_id=eq.${userId}`,
-          }, (payload) => {
-            const row = payload.new as Notification
-            setCount((c) => c + 1)
-            setItems((prev) => prev.some((n) => n.id === row.id) ? prev : [toNotifItem(row), ...prev])
-            pushPopup(toNotifItem(row))
-            router.refresh()
-          })
-          .subscribe()
+        // El conteo depende del módulo según el rol — recalculamos con la
+        // misma RPC que usa el layout en vez de duplicar esa lógica aquí
+        const [{ data: unread }, { data: latest }] = await Promise.all([
+          supabase.rpc('get_admin_unread_count'),
+          supabase.rpc('get_admin_notifications_for_user', { p_limit: 5, p_offset: 0 }),
+        ])
+        if (typeof unread === 'number') setCount(unread)
+        setLoaded(false)
+        const row = (latest as AdminNotification[] | null)?.find((n) => n.id === id)
+        if (row) pushPopup(toAdminNotifItem(row))
+        router.refresh()
+      })
+    }
 
-    return () => { supabase.removeChannel(channel) }
+    return onBroadcast(supabase, `notifications:${userId}`, async (payload) => {
+      const { id } = payload as { id: string }
+      const { data } = await supabase
+        .from('notifications')
+        .select('id, user_id, ticket_id, type, module, title, body, is_read, created_at')
+        .eq('id', id)
+        .single()
+      if (!data) return
+      const row = data as Notification
+      setCount((c) => c + 1)
+      setItems((prev) => prev.some((n) => n.id === row.id) ? prev : [toNotifItem(row), ...prev])
+      pushPopup(toNotifItem(row))
+      router.refresh()
+    })
   }, [isAdmin, userId])
 
   async function handleOpen(isOpen: boolean) {

@@ -21,6 +21,7 @@ import { cn, formatDate } from '@/lib/utils'
 import { ChevronLeft, FileText, CheckCircle2, UserCheck, Play, Check, X, Upload, Download, RefreshCw, RotateCcw, Trash2, Loader2 } from 'lucide-react'
 import { changeMaintenanceStatus, addMaintenanceComment, uploadEvidencia, regeneratePdf, reassignTecnico, deleteEvidencia } from '@/actions/maintenance'
 import { createClient } from '@/lib/supabase/client'
+import { onBroadcast } from '@/lib/realtime'
 import { toast } from 'sonner'
 
 interface HistoryEntry {
@@ -108,30 +109,23 @@ export function AdminMaintenanceDetail({
 
   useEffect(() => {
     const supabase = createClient()
-    const channel = supabase
-      .channel(`admin-maint-comments-${ticket.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'maintenance_comments',
-        filter: `ticket_id=eq.${ticket.id}`,
-      }, async (payload) => {
-        const row = payload.new as { id: string; author_id: string | null }
-        if (row.author_id === currentUserId) return
-        const { data } = await supabase
-          .from('maintenance_comments')
-          .select('id, body, is_internal, created_at, author_id, author:profiles(full_name, email)')
-          .eq('id', row.id)
-          .single()
-        if (!data) return
-        const author = Array.isArray(data.author) ? data.author[0] : data.author
-        setLocalComments((prev) => {
-          if (prev.some((c) => c.id === data.id)) return prev
-          return [...prev, { ...data, author }]
-        })
+    // Aviso por Broadcast (migración 020): solo trae id/author_id/is_internal;
+    // el comentario completo se vuelve a leer abajo con la sesión (RLS)
+    return onBroadcast(supabase, `maintenance_comments:${ticket.id}`, async (payload) => {
+      const row = payload as { id: string; author_id: string | null }
+      if (row.author_id === currentUserId) return
+      const { data } = await supabase
+        .from('maintenance_comments')
+        .select('id, body, is_internal, created_at, author_id, author:profiles(full_name, email)')
+        .eq('id', row.id)
+        .single()
+      if (!data) return
+      const author = Array.isArray(data.author) ? data.author[0] : data.author
+      setLocalComments((prev) => {
+        if (prev.some((c) => c.id === data.id)) return prev
+        return [...prev, { ...data, author }]
       })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    })
   }, [ticket.id, currentUserId])
 
   // Assign panel state

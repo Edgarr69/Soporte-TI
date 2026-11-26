@@ -14,9 +14,15 @@ import { createClient } from '@/lib/supabase/server'
 export const getAuthedProfile = cache(async () => {
   const supabase = await createClient()
 
-  // Ambas queries en paralelo — RLS de profiles filtra por auth.uid() automáticamente
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { supabase, user: null, profile: null }
+  // getClaims() valida la firma del JWT localmente (el proyecto usa llaves
+  // asimétricas ES256), sin ir a Supabase Auth ni a la base en cada página.
+  // La prueba de carga mostró que getUser() en cada request era una de las
+  // consultas más frecuentes de la base. Las Server Actions siguen usando
+  // getUser() (verificación completa contra Auth) porque escriben datos.
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const claims = claimsData?.claims
+  if (!claims?.sub) return { supabase, user: null, profile: null }
+  const user = { id: claims.sub, email: (claims.email as string | undefined) ?? undefined }
 
   const { data: profile } = await supabase
     .from('profiles')

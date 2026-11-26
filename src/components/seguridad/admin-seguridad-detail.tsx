@@ -28,6 +28,7 @@ import {
   uploadSeguridadEvidencia, deleteSeguridadEvidencia,
 } from '@/actions/seguridad'
 import { createClient } from '@/lib/supabase/client'
+import { onBroadcast } from '@/lib/realtime'
 import { toast } from 'sonner'
 import { compressImages } from '@/lib/image-compress'
 
@@ -90,30 +91,23 @@ export function AdminSeguridadDetail({
 
   useEffect(() => {
     const supabase = createClient()
-    const channel = supabase
-      .channel(`admin-seguridad-comments-${ticket.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'seguridad_comments',
-        filter: `ticket_id=eq.${ticket.id}`,
-      }, async (payload) => {
-        const row = payload.new as { id: string; author_id: string | null }
-        if (row.author_id === currentUserId) return
-        const { data } = await supabase
-          .from('seguridad_comments')
-          .select('id, body, is_internal, created_at, author_id, author:profiles(full_name, email)')
-          .eq('id', row.id)
-          .single()
-        if (!data) return
-        const author = Array.isArray(data.author) ? data.author[0] : data.author
-        setLocalComments((prev) => {
-          if (prev.some((c) => c.id === data.id)) return prev
-          return [...prev, { ...data, author: author ?? null }]
-        })
+    // Aviso por Broadcast (migración 020): solo trae id/author_id/is_internal;
+    // el comentario completo se vuelve a leer abajo con la sesión (RLS)
+    return onBroadcast(supabase, `seguridad_comments:${ticket.id}`, async (payload) => {
+      const row = payload as { id: string; author_id: string | null }
+      if (row.author_id === currentUserId) return
+      const { data } = await supabase
+        .from('seguridad_comments')
+        .select('id, body, is_internal, created_at, author_id, author:profiles(full_name, email)')
+        .eq('id', row.id)
+        .single()
+      if (!data) return
+      const author = Array.isArray(data.author) ? data.author[0] : data.author
+      setLocalComments((prev) => {
+        if (prev.some((c) => c.id === data.id)) return prev
+        return [...prev, { ...data, author: author ?? null }]
       })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    })
   }, [ticket.id, currentUserId])
 
   const next = SEGURIDAD_TRANSITIONS[ticket.status] ?? []
