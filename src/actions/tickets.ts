@@ -14,12 +14,21 @@ export async function createTicket(data: NewTicketFormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  // Ambas queries son independientes — ejecutar en paralelo.
+  // Subcategoría opcional: "Impresoras" y "Accesos / Permisos" no tienen.
+  // Se exige solo si la categoría tiene alguna (migración 022).
+  const subcategoryId = data.subcategory_id || null
+
+  // Queries independientes — ejecutar en paralelo.
   // El perfil trae también nombre/email para las notificaciones de abajo
-  const [{ data: profile }, { data: subcat }] = await Promise.all([
+  const [{ data: profile }, { data: subcat }, { count: subsOfCategory }] = await Promise.all([
     supabase.from('profiles').select('department_id, full_name, email').eq('id', user.id).single(),
-    supabase.from('ticket_subcategories').select('base_score').eq('id', data.subcategory_id).single(),
+    subcategoryId
+      ? supabase.from('ticket_subcategories').select('base_score, category_id').eq('id', subcategoryId).single()
+      : Promise.resolve({ data: null }),
+    supabase.from('ticket_subcategories').select('id', { count: 'exact', head: true }).eq('category_id', data.category_id),
   ])
+  if (!subcategoryId && (subsOfCategory ?? 0) > 0) return { error: 'Selecciona una subcategoría' }
+  if (subcategoryId && subcat?.category_id !== data.category_id) return { error: 'Subcategoría no válida' }
 
   const { priority, score } = calculatePriority({
     blockingLevel:  data.blocking_level,
@@ -34,7 +43,7 @@ export async function createTicket(data: NewTicketFormData) {
       user_id:          user.id,
       department_id:    profile?.department_id ?? null,
       category_id:      data.category_id,
-      subcategory_id:   data.subcategory_id,
+      subcategory_id:   subcategoryId,
       description:      data.description,
       blocking_level:   data.blocking_level,
       affected_scope:   data.affected_scope,

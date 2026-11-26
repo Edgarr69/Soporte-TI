@@ -77,16 +77,20 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
       toast.error('Espera a que termine de procesarse la imagen.')
       return
     }
-    if (!deptId || !areaId || !encargado.trim() || !servicio.trim() || !descripcion.trim()) {
-      toast.error('Completa todos los campos obligatorios.')
-      return
-    }
-    if (servicio.trim().length < 5) {
-      toast.error('El nombre del servicio debe tener al menos 5 caracteres.')
-      return
-    }
-    if (descripcion.trim().length < 20) {
-      toast.error('La descripción debe tener al menos 20 caracteres.')
+    // El botón ya no se desactiva: se dice exactamente qué falta y se lleva al
+    // primer campo pendiente (en el celular no se veía qué faltaba)
+    const missing = [
+      !deptId                        && ['form-dept',   'el departamento'],
+      !areaId                        && ['form-area',   'el área afectada'],
+      !encargado.trim()              && ['encargado',   'el encargado'],
+      servicio.trim().length < 5     && ['servicio',    `el servicio (mínimo 5 caracteres)`],
+      descripcion.trim().length < 20 && ['descripcion', `la descripción (${descripcion.trim().length}/20 caracteres)`],
+    ].filter(Boolean) as [string, string][]
+    if (missing.length) {
+      toast.error(`Falta completar: ${missing.map(([, l]) => l).join(', ')}.`)
+      const el = document.getElementById(missing[0][0])
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el?.focus({ preventScroll: true })
       return
     }
 
@@ -318,7 +322,7 @@ export function MaintenanceForm({ tipo, profile, departments, areas, categories 
       <Button
         type="submit"
         className="w-full"
-        disabled={loading || !deptId || !areaId || !encargado.trim() || !servicio.trim() || !descripcion.trim()}
+        disabled={loading}
       >
         {loading ? (
           <>

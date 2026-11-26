@@ -95,7 +95,7 @@ export function MisTicketsTabs({ sysTickets, generalTickets, maqTickets, segTick
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-mono text-zinc-400">{t.folio}</span>
                         <span className="text-sm font-semibold truncate">
-                          {t.ticket_categories?.name ?? '—'} · {t.ticket_subcategories?.name ?? '—'}
+                          {t.ticket_categories?.name ?? '—'}{t.ticket_subcategories?.name ? ` · ${t.ticket_subcategories.name}` : ''}
                         </span>
                         {t.is_reopened && (
                           <Badge variant="outline" className="text-xs border-purple-300 text-purple-600">Reabierto</Badge>

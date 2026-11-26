@@ -166,7 +166,7 @@ export function AdminTicketDetail({ ticket: initialTicket, history, comments: in
             )}
           </div>
           <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mt-0.5">
-            {t.ticket_categories?.name} — {t.ticket_subcategories?.name}
+            {t.ticket_categories?.name}{t.ticket_subcategories?.name ? ` — ${t.ticket_subcategories.name}` : ''}
           </h1>
           <p className="text-sm text-zinc-500 mt-0.5">
             {t.user?.full_name} · {t.department?.name ?? 'Sin depto.'}

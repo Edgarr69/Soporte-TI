@@ -139,7 +139,7 @@ export function AdminTicketList({ tickets, currentFilters, page, totalPages }: P
                         )}
                       </div>
                       <p className="text-xs text-zinc-500 mt-0.5">
-                        {t.ticket_categories?.name} · {t.ticket_subcategories?.name}
+                        {t.ticket_categories?.name}{t.ticket_subcategories?.name ? ` · ${t.ticket_subcategories.name}` : ''}
                       </p>
                       <p className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{t.description}</p>
                       <p className="text-xs text-zinc-400 mt-0.5">{formatDate(t.created_at)}</p>

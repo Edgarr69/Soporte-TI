@@ -106,7 +106,7 @@ export function TicketList({ tickets }: { tickets: TicketRow[] }) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-mono text-zinc-400">{t.folio}</span>
                         <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                          {t.ticket_categories?.name ?? '—'} — {t.ticket_subcategories?.name ?? '—'}
+                          {t.ticket_categories?.name ?? '—'}{t.ticket_subcategories?.name ? ` — ${t.ticket_subcategories.name}` : ''}
                         </span>
                         {t.is_reopened && (
                           <Badge variant="outline" className="text-xs border-purple-300 text-purple-600">

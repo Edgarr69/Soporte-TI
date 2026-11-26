@@ -118,7 +118,7 @@ export interface Ticket {
   user_id: string
   department_id: string | null
   category_id: string
-  subcategory_id: string
+  subcategory_id: string | null   // opcional: Impresoras y Accesos no tienen (migración 022)
   description: string
   blocking_level: BlockingLevel
   affected_scope: AffectedScope
@@ -202,7 +202,7 @@ export interface Notification {
 
 export interface NewTicketFormData {
   category_id: string
-  subcategory_id: string
+  subcategory_id: string          // "" si la categoría no tiene subcategorías
   description: string
   blocking_level: BlockingLevel
   affected_scope: AffectedScope

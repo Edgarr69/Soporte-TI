@@ -41,6 +41,7 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
   const [categoryId,    setCategoryId]    = useState('')
   const [subcategoryId, setSubcategoryId] = useState('')
   const [description,   setDescription]   = useState('')
+  const [triedSubmit,   setTriedSubmit]   = useState(false)
   const [blocking,      setBlocking]      = useState<'total' | 'partial' | 'none' | ''>('')
   const [scope,         setScope]         = useState<'single' | 'multiple' | ''>('')
   const [workaround,    setWorkaround]    = useState<'yes' | 'no' | ''>('')
@@ -54,14 +55,27 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
   const hasSubcategories = filteredSubs.length > 0
 
 
+  // Lo que falta, en el orden del formulario. El botón ya no se desactiva:
+  // en el celular no se veía qué faltaba (la descripción y las preguntas de
+  // impacto quedan fuera de pantalla) y parecía que "no dejaba enviar".
+  const descLen = description.trim().length
+  const missing: { field: string; label: string }[] = [
+    !categoryId                              && { field: 'select-categoria',    label: 'la categoría' },
+    categoryId && hasSubcategories && !subcategoryId && { field: 'select-subcategoria', label: 'la subcategoría' },
+    descLen < 30                             && { field: 'descripcion',         label: `la descripción (${descLen}/30 caracteres)` },
+    !blocking                                && { field: 'select-bloqueo',      label: 'si te impide trabajar' },
+    !scope                                   && { field: 'select-alcance',      label: 'a quién afecta' },
+    !workaround                              && { field: 'select-alternativa',  label: 'si tienes alternativa' },
+  ].filter(Boolean) as { field: string; label: string }[]
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!categoryId || (hasSubcategories && !subcategoryId) || !description.trim() || !blocking || !scope || !workaround) {
-      toast.error('Completa todos los campos requeridos.')
-      return
-    }
-    if (description.trim().length < 30) {
-      toast.error('La descripción debe tener al menos 30 caracteres.')
+    setTriedSubmit(true)
+    if (missing.length) {
+      toast.error(`Falta completar: ${missing.map((m) => m.label).join(', ')}.`)
+      const el = document.getElementById(missing[0].field)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el?.focus({ preventScroll: true })
       return
     }
     setLoading(true)
@@ -76,7 +90,8 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
     })
 
     if (result.error) {
-      toast.error('No se pudo crear el ticket. Por favor intenta de nuevo.')
+      console.error('[createTicket]', result.error)
+      toast.error(`No se pudo crear el ticket: ${result.error}`)
       setLoading(false)
       return
     }
@@ -84,9 +99,6 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
     toast.success(`Ticket ${result.ticket?.folio} creado correctamente.`)
     router.push('/dashboard')
   }
-
-  const isValid = categoryId && (!hasSubcategories || subcategoryId) && description.trim().length >= 30
-    && blocking && scope && workaround
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -257,6 +269,13 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
         </CardContent>
       </Card>
 
+      {/* Qué falta (visible junto al botón, sobre todo en celular) */}
+      {triedSubmit && missing.length > 0 && (
+        <p className="text-xs text-amber-600 dark:text-amber-400" aria-live="polite">
+          Falta: {missing.map((m) => m.label).join(', ')}.
+        </p>
+      )}
+
       {/* Botones */}
       <div className="flex gap-3">
         <Button
@@ -268,7 +287,7 @@ export function NewTicketForm({ categories, subcategories, profile }: Props) {
         >
           Cancelar
         </Button>
-        <Button type="submit" className="flex-1" disabled={!isValid || loading}>
+        <Button type="submit" className="flex-1" disabled={loading}>
           {loading && <Loader2 aria-hidden="true" className="h-4 w-4 mr-2 animate-spin" />}
           {loading ? 'Enviando...' : 'Enviar ticket'}
         </Button>

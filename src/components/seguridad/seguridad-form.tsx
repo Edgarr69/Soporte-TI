@@ -67,7 +67,14 @@ export function SeguridadForm({ departmentName, areas, categories }: Props) {
     if (photoInputRef.current) photoInputRef.current.value = ''
   }
 
-  const canSubmit = !!catId && !!areaId && ubicacion.trim().length >= 3 && descripcion.trim().length >= 10
+  // El botón ya no se desactiva: se dice exactamente qué falta y se lleva al
+  // primer campo pendiente (en el celular no se veía qué faltaba)
+  const missing = [
+    !catId                         && ['seg-cat',       'la categoría'],
+    !areaId                        && ['seg-area',      'el área'],
+    ubicacion.trim().length < 3    && ['seg-ubicacion', 'la ubicación (mínimo 3 caracteres)'],
+    descripcion.trim().length < 10 && ['seg-desc',      `la descripción (${descripcion.trim().length}/10 caracteres)`],
+  ].filter(Boolean) as [string, string][]
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -75,8 +82,11 @@ export function SeguridadForm({ departmentName, areas, categories }: Props) {
       toast.error('Espera a que termine de procesarse la imagen.')
       return
     }
-    if (!canSubmit) {
-      toast.error('Completa todos los campos obligatorios.')
+    if (missing.length) {
+      toast.error(`Falta completar: ${missing.map(([, l]) => l).join(', ')}.`)
+      const el = document.getElementById(missing[0][0])
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el?.focus({ preventScroll: true })
       return
     }
     setLoading(true)
@@ -264,7 +274,7 @@ export function SeguridadForm({ departmentName, areas, categories }: Props) {
         </CardContent>
       </Card>
 
-      <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
+      <Button type="submit" className="w-full" disabled={loading}>
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
